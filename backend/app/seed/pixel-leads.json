@@ -1,0 +1,202 @@
+[
+  {
+    "id": "L01",
+    "channel": "form",
+    "status": "new",
+    "hours_ago": 0.2,
+    "text": "Имя: Алина\nТелефон: 8 (843) 211-45-90\n\nДобрый день! Мы небольшая сеть кофеен «Зерно», три точки в Казани. Хотим сайт с меню и онлайн-заказом на вынос — сейчас есть только группа во ВКонтакте. Бюджет примерно 150–200 тыс., запуститься хотелось бы к весне.",
+    "expected": {"type": "new_site", "urgency": "medium", "phones": ["+7 (843) 211-45-90"], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L02",
+    "channel": "telegram",
+    "status": "new",
+    "hours_ago": 0.6,
+    "text": "СРОЧНО!!! с утра не работает оплата на сайте podarki-shop.ru, клиенты пишут что после кнопки оплатить белый экран. теряем заказы, у нас распродажа. сайт делали вы в прошлом году. перезвоните +7 912 345 67 89 Денис",
+    "expected": {"type": "support", "urgency": "high", "phones": ["+7 (912) 345-67-89"], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L03",
+    "channel": "manual",
+    "status": "in_progress",
+    "hours_ago": 26,
+    "text": "здравствуйте нужно доработать сайт добавить раздел с отзывами и подключить амо срм чтобы заявки падали туда. сайт на тильде. пишите в тг marina_decor или на почту marina.decor собака yandex точка ru, звонить лучше после 18:00 89031234567 Марина",
+    "expected": {"type": "improvement", "urgency": "medium", "phones": ["+7 (903) 123-45-67"], "emails": ["marina.decor@yandex.ru"], "telegram": ["@marina_decor"]}
+  },
+  {
+    "id": "L04",
+    "channel": "form",
+    "status": "new",
+    "hours_ago": 3,
+    "text": "Имя: Игорь\nКонтакт: igor.p@mail.ru\n\nСколько у вас стоит лендинг и сколько по времени делаете? Есть готовые шаблоны или только с нуля?",
+    "expected": {"type": "question", "urgency": "low", "phones": [], "emails": ["igor.p@mail.ru"], "telegram": []}
+  },
+  {
+    "id": "L05",
+    "channel": "manual",
+    "status": "spam",
+    "hours_ago": 5,
+    "text": "Здравствуйте! Выведем ваш сайт в ТОП-10 Яндекса за 14 дней. Гарантия результата, оплата по факту, более 500 довольных клиентов. Закажите бесплатный аудит: https://seo-rocket.example/audit или пишите https://seo-rocket.example/chat",
+    "expected": {"type": "spam", "urgency": "low", "phones": [], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L06",
+    "channel": "form",
+    "status": "spam",
+    "hours_ago": 7,
+    "text": "...",
+    "expected": {"type": "spam", "urgency": "low", "phones": [], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L07",
+    "channel": "telegram",
+    "status": "new",
+    "hours_ago": 9,
+    "text": "89261112233",
+    "expected": {"type": "question", "urgency": "medium", "phones": ["+7 (926) 111-22-33"], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L08",
+    "channel": "form",
+    "status": "new",
+    "hours_ago": 11,
+    "text": "Имя: Тимур\nКонтакт: @barber_pro_kzn\n\nОткрываем барбершоп через 5 дней, а сайта нет вообще. Нужна хотя бы одностраничная визитка: адрес, цены, кнопка записи. Бюджет около 40 тысяч. Успеете?",
+    "expected": {"type": "new_site", "urgency": "high", "phones": [], "emails": [], "telegram": ["@barber_pro_kzn"]}
+  },
+  {
+    "id": "L09",
+    "channel": "manual",
+    "status": "new",
+    "hours_ago": 20,
+    "text": "Добрый день.\n\nНа будущее хотим подумать о версии нашего сайта на английском языке — пока просто прицениваемся, решение будем принимать в следующем году. Подскажите порядок цен.\n\nС уважением,\nАнна Смирнова\nООО «Альянс-Строй»\n+7 (495) 640-12-12 доб. 214",
+    "expected": {"type": "improvement", "urgency": "low", "phones": ["+7 (495) 640-12-12, доб. 214"], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L10",
+    "channel": "telegram",
+    "status": "waiting",
+    "hours_ago": 30,
+    "text": "Привет! Делаю свечи ручной работы, бренд Lumi. Хочу интернет-магазин: каталог, корзина, оплата картой, доставка по России. Бюджет до 300к, очень хочется успеть к Новому году. Мой телефон 8-999-201-33-44, инста и тг @svechi_lumi",
+    "expected": {"type": "new_site", "urgency": "medium", "phones": ["+7 (999) 201-33-44"], "emails": [], "telegram": ["@svechi_lumi"]}
+  },
+  {
+    "id": "L11",
+    "channel": "form",
+    "status": "closed",
+    "hours_ago": 50,
+    "text": "Имя: Павел\nКонтакт: pavel.kuznetsov78@yandex.ru\n\nПришло письмо, что через три недели заканчивается хостинг и домен. Сайт делали не вы, разработчик пропал. Можете взять на себя продление и обслуживание?",
+    "expected": {"type": "support", "urgency": "medium", "phones": [], "emails": ["pavel.kuznetsov78@yandex.ru"], "telegram": []}
+  },
+  {
+    "id": "L12",
+    "channel": "manual",
+    "status": "spam",
+    "hours_ago": 55,
+    "text": "Уважаемые партнёры! Предлагаем актуальные базы клиентов строительных компаний: 50 000 контактов с телефонами и e-mail. Только сегодня скидка 70%! Пишите: sales@baza-kontaktov.example",
+    "expected": {"type": "spam", "urgency": "low", "phones": [], "emails": ["sales@baza-kontaktov.example"], "telegram": []}
+  },
+  {
+    "id": "L13",
+    "channel": "telegram",
+    "status": "spam",
+    "hours_ago": 60,
+    "text": "Заработок от 5000₽ в день без вложений 💰💰💰 работа с телефона, пиши + в лс",
+    "expected": {"type": "spam", "urgency": "low", "phones": [], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L14",
+    "channel": "form",
+    "status": "in_progress",
+    "hours_ago": 4,
+    "text": "Имя: Елена Сергеевна\nТелефон: +7(921)555-0-777\n\nЗдравствуйте, я администратор стоматологии «Дента Плюс». После обновления плагина на WordPress поехала вёрстка на телефонах, кнопка «Записаться» не нажимается. Запись идёт только через сайт, сегодня уже нет ни одной заявки!",
+    "expected": {"type": "support", "urgency": "high", "phones": ["+7 (921) 555-07-77"], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L15",
+    "channel": "manual",
+    "status": "closed",
+    "hours_ago": 140,
+    "text": "Добрый день!\n\nТранспортная компания «ТрансЛогик» ищет подрядчика на новый корпоративный сайт: услуги, расчёт стоимости перевозки, личный кабинет клиента с отслеживанием груза, интеграция с 1С. Текущему сайту 8 лет, переносить ничего не нужно. Бюджет 400–500 тыс. ₽, запуск — в первом квартале следующего года.\n\nМихаил Орлов, руководитель отдела маркетинга\nm.orlov@translogik.ru\n+7 343 287 90 12",
+    "expected": {"type": "new_site", "urgency": "medium", "phones": ["+7 (343) 287-90-12"], "emails": ["m.orlov@translogik.ru"], "telegram": []}
+  },
+  {
+    "id": "L16",
+    "channel": "telegram",
+    "status": "in_progress",
+    "hours_ago": 72,
+    "text": "Добрый день, у нас магазин автозапчастей на Битриксе. Нужно подключить онлайн-оплату через ЮKassa и расчёт доставки СДЭК в корзине. Хотим до конца ноября. Связь здесь или @kirill_avtoparts",
+    "expected": {"type": "improvement", "urgency": "medium", "phones": [], "emails": [], "telegram": ["@kirill_avtoparts"]}
+  },
+  {
+    "id": "L17",
+    "channel": "form",
+    "status": "new",
+    "hours_ago": 14,
+    "text": "Имя: Ольга\nТелефон: 8 916 700 12 34\n\nВы делаете мобильные приложения? Нужно приложение для фитнес-клуба: расписание, запись на тренировки, абонементы.",
+    "expected": {"type": "question", "urgency": "low", "phones": ["+7 (916) 700-12-34"], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L18",
+    "channel": "manual",
+    "status": "new",
+    "hours_ago": 38,
+    "text": "Здравствуйте! Я frontend-разработчик, 3 года опыта: React, Next.js, TypeScript. Ищу работу в веб-студии, можно удалённо. Резюме: ivanov.dev@gmail.com, Telegram @dev_ivanov",
+    "expected": {"type": "question", "urgency": "low", "phones": [], "emails": ["ivanov.dev@gmail.com"], "telegram": ["@dev_ivanov"]}
+  },
+  {
+    "id": "L19",
+    "channel": "telegram",
+    "status": "new",
+    "hours_ago": 44,
+    "text": "Здравствуйте, хотим добавить на сайт dom-mebel-spb.ru онлайн-чат и кнопку WhatsApp внизу экрана. Сайт на WordPress. Сделаете? Сколько будет стоить?",
+    "expected": {"type": "improvement", "urgency": "low", "phones": [], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L20",
+    "channel": "form",
+    "status": "new",
+    "hours_ago": 1.5,
+    "text": "Имя: Сергей\nТелефон: +7 (863) 300-45-67\n\nНаш сайт взломали: на главной висит реклама казино, а Яндекс пометил сайт как опасный. Туристы не могут оставить заявку. Помогите как можно быстрее! Почта для связи info@tourmix-travel.ru",
+    "expected": {"type": "support", "urgency": "high", "phones": ["+7 (863) 300-45-67"], "emails": ["info@tourmix-travel.ru"], "telegram": []}
+  },
+  {
+    "id": "L21",
+    "channel": "manual",
+    "status": "waiting",
+    "hours_ago": 100,
+    "text": "Добрый день! Присматриваемся к полному редизайну сайта фермерских продуктов в следующем году — нынешний выглядит устаревшим и плохо продаёт. Пришлите, пожалуйста, портфолио и примерные цены.\n\nНаталья\nn.belova [at] eco-ferma.ru",
+    "expected": {"type": "new_site", "urgency": "low", "phones": [], "emails": ["n.belova@eco-ferma.ru"], "telegram": []}
+  },
+  {
+    "id": "L22",
+    "channel": "telegram",
+    "status": "spam",
+    "hours_ago": 80,
+    "text": "ывапролдж фывапр ааааа",
+    "expected": {"type": "spam", "urgency": "low", "phones": [], "emails": [], "telegram": []}
+  },
+  {
+    "id": "L23",
+    "channel": "form",
+    "status": "new",
+    "hours_ago": 18,
+    "text": "Имя: Kate\nКонтакт: kate.yoga@gmail.com\n\nHi! We need a landing page for our yoga studio in Sochi. Budget around $1500, ASAP please — we start ads next week.",
+    "expected": {"type": "new_site", "urgency": "high", "phones": [], "emails": ["kate.yoga@gmail.com"], "telegram": []}
+  },
+  {
+    "id": "L24",
+    "channel": "manual",
+    "status": "waiting",
+    "hours_ago": 120,
+    "text": "Ищем подрядчика на постоянное обслуживание двух сайтов на WordPress: обновления, резервные копии, мелкие правки по заявкам. Начать с 1 декабря. Роман, +7 912 004 55 66, roman@printshop-ekb.ru",
+    "expected": {"type": "support", "urgency": "medium", "phones": ["+7 (912) 004-55-66"], "emails": ["roman@printshop-ekb.ru"], "telegram": []}
+  },
+  {
+    "id": "L25",
+    "channel": "telegram",
+    "status": "new",
+    "hours_ago": 2,
+    "text": "Добрый день! Можете сделать сайт как у конкурентов, только лучше?",
+    "expected": {"type": "new_site", "urgency": "low", "phones": [], "emails": [], "telegram": []}
+  }
+]
