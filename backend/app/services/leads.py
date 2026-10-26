@@ -59,6 +59,13 @@ async def top_position(session: AsyncSession, visitor_id: str, status: str) -> f
     return (lowest if lowest is not None else 1.0) - 1.0
 
 
+def form_text(name: str, contact: str, message: str) -> str:
+    """Текст заявки с формы — как его увидел бы менеджер в письме-уведомлении."""
+    head = [f"Имя: {name}" if name else "", f"Контакт: {contact}" if contact else ""]
+    head = [line for line in head if line]
+    return "\n".join(head) + ("\n\n" if head and message else "") + message
+
+
 async def create_lead(session: AsyncSession, visitor_id: str, channel: str, text: str) -> Lead:
     lead = Lead(
         visitor_id=visitor_id,

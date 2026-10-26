@@ -30,6 +30,13 @@
   --color-danger-soft: #fbeceb;
   --color-info: #2a5bc0;
   --color-info-soft: #eaf0fb;
+
+  /* Сайт вымышленной студии «Пиксель» — у клиента своя палитра, не как у LeadSort */
+  --color-px: #4f46e5;
+  --color-px-hover: #4338ca;
+  --color-px-soft: #eef0ff;
+  --color-px-ink: #1e1b4b;
+  --color-px-coral: #ff7a59;
 }
 
 :root {

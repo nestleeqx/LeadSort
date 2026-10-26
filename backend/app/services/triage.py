@@ -23,6 +23,9 @@ log = logging.getLogger(__name__)
 
 MAX_MISSING = 4
 NOT_SPECIFIED = "не указано"
+# Шапка заявки с формы на сайте: «Имя: …», «Контакт: …»
+FORM_HEADER = re.compile(r"^\s*(?:Имя|Контакт|Телефон|Почта|E-?mail|Telegram)\s*:.*$", re.M | re.I)
+FORM_NAME = re.compile(r"^\s*Имя\s*:\s*(.+?)\s*$", re.M)
 SIGNATURE = "Менеджер студии «Пиксель»"
 
 
@@ -42,7 +45,8 @@ def _words_without_contacts(text: str, found: FoundContacts) -> str:
         parts.append(text[pos:start])
         pos = max(pos, end)
     parts.append(text[pos:])
-    return " ".join(re.findall(r"[A-Za-zА-Яа-яЁё]{2,}", " ".join(parts)))
+    rest = FORM_HEADER.sub("", " ".join(parts))
+    return " ".join(re.findall(r"[A-Za-zА-Яа-яЁё]{2,}", rest))
 
 
 def _highlights(found: FoundContacts, name: str, text: str) -> list[Highlight]:
@@ -84,6 +88,7 @@ def _by_rules(text: str, found: FoundContacts) -> Triage | None:
             urgency="medium",
             urgency_reason="Оставили только контакт — нужно связаться и уточнить задачу",
             contacts=Contacts(
+                name=name.group(1)[:80] if (name := FORM_NAME.search(text)) else "",
                 phones=[f.value for f in found.phones],
                 emails=[f.value for f in found.emails],
                 telegram=[f.value for f in found.telegram],
@@ -171,7 +176,8 @@ async def triage_lead(provider: LLMProvider, redis: Redis, text: str) -> TriageR
     found = find_contacts(text)
     by_rules = _by_rules(text, found)
     if by_rules:
-        return TriageResult(by_rules, _highlights(found, "", text), [], "rules")
+        highlights = _highlights(found, by_rules.contacts.name, text)
+        return TriageResult(by_rules, highlights, [], "rules")
 
     ai = await _ask_model(provider, redis, text)
     contacts, notes = _merge_contacts(ai, found, text)

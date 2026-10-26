@@ -72,6 +72,8 @@ export const api = {
   board: () => request<Board>("/api/leads"),
   lead: (id: string) => request<LeadDetail>(`/api/leads/${id}`),
   addLead: (text: string) => request<Lead>("/api/leads", json("POST", { text })),
+  submitForm: (body: { name: string; contact: string; message: string }) =>
+    request<Lead>("/api/form", json("POST", body)),
   /** Без position карточка встаёт наверх колонки. */
   moveLead: (id: string, status: Column, position?: number) =>
     request<Lead>(`/api/leads/${id}`, json("PATCH", { status, position })),

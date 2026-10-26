@@ -1,11 +1,11 @@
 "use client";
 
-import { KanbanSquare, Wand2 } from "lucide-react";
+import { Globe, KanbanSquare, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { PAGE } from "@/lib/layout";
-import { Logo } from "./Logo";
+import { Logo, LogoMark } from "./Logo";
 
 function NavLink({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) {
   const active = usePathname() === href;
@@ -28,11 +28,19 @@ export function AppHeader() {
     <header className="border-b border-line bg-surface">
       <div className={`${PAGE} flex h-14 items-center gap-3 sm:gap-6`}>
         <Link href="/app" aria-label="LeadSort — доска заявок">
-          <Logo />
+          {/* На телефоне — только знак, чтобы поместились три пункта меню */}
+          <span className="max-sm:hidden">
+            <Logo />
+          </span>
+          <LogoMark className="size-7 sm:hidden" />
         </Link>
         <nav className="flex items-center gap-1">
           <NavLink href="/app" icon={<KanbanSquare className="size-4" />}>
             Доска
+          </NavLink>
+          <NavLink href="/pixel" icon={<Globe className="size-4" />}>
+            <span className="max-sm:hidden">Сайт студии</span>
+            <span className="sm:hidden">Сайт</span>
           </NavLink>
           <NavLink href="/try" icon={<Wand2 className="size-4" />}>
             <span className="max-sm:hidden">Проверить разбор</span>

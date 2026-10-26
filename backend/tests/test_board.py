@@ -202,3 +202,57 @@ async def test_move_without_position_puts_card_on_top(client):
     top = min(item["position"] for item in leads if item["status"] == "closed")
     moved = (await client.patch(f"/api/leads/{lead['id']}", json={"status": "closed"})).json()
     assert moved["status"] == "closed" and moved["position"] < top
+
+
+async def test_form_lead_lands_on_board_triaged(client):
+    resp = await client.post(
+        "/api/form",
+        json={
+            "name": "Ольга",
+            "contact": "8 916 700 12 34",
+            "message": "Сайт не открывается с утра, срочно нужна помощь!",
+        },
+    )
+    assert resp.status_code == 201
+    created = resp.json()
+    assert created["channel"] == "form" and created["state"] in {"queued", "running"}
+    assert created["text"].startswith("Имя: Ольга\nКонтакт: 8 916 700 12 34\n\n")
+    await drain()
+
+    lead = (await client.get(f"/api/leads/{created['id']}")).json()
+    assert lead["state"] == "done" and lead["status"] == "new"
+    assert lead["triage"]["type"] == "support" and lead["triage"]["notify"]
+    assert lead["triage"]["contacts"]["phones"] == ["+7 (916) 700-12-34"]
+    assert lead["events"][0]["text"] == "Заявка получена: форма на сайте"
+    # Первая заявка посетителя — его демо-доска создаётся тут же
+    assert len(await _board(client)) == 26
+
+
+async def test_form_with_contact_only_is_accepted(client):
+    resp = await client.post("/api/form", json={"name": "Иван", "contact": "+79161234567"})
+    assert resp.status_code == 201
+    await drain()
+    lead = (await client.get(f"/api/leads/{resp.json()['id']}")).json()
+    assert lead["method"] == "rules" and lead["triage"]["type"] == "question"
+    assert lead["triage"]["contacts"]["name"] == "Иван"
+    assert {h["kind"] for h in lead["highlights"]} == {"name", "phone"}
+
+
+async def test_empty_form_is_rejected(client):
+    resp = await client.post("/api/form", json={"name": "Иван", "contact": " ", "message": ""})
+    assert resp.status_code == 422 and "контакт" in resp.json()["detail"]
+
+
+async def test_form_page_polling_triages_in_poll_mode(client):
+    """На Vercel страница формы опрашивает заявку — этот опрос её и разбирает."""
+    from app.db import SessionLocal
+    from app.main import app
+    from app.services.processing import PollQueue
+    from app.services.redis_store import get_redis
+
+    app.state.queue = PollQueue(SessionLocal, app.state.provider, get_redis())
+    created = (
+        await client.post("/api/form", json={"message": "Нужен лендинг для кофейни к весне"})
+    ).json()
+    lead = (await client.get(f"/api/leads/{created['id']}")).json()
+    assert lead["state"] == "done" and lead["triage"]["type"] == "new_site"

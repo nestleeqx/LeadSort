@@ -42,6 +42,9 @@ const COLUMN_IDS = COLUMNS.map((c) => c.id);
 
 export const isPending = (lead: Lead) => lead.state === "queued" || lead.state === "running";
 
+// Функция опроса — вне компонента: новая функция на каждой отрисовке перезапускает таймер SWR
+const boardRefresh = (latest?: BoardData) => (latest?.leads.some(isPending) ? 2000 : 15000);
+
 function matches(lead: Lead, f: Filters) {
   const t = lead.triage;
   if (f.types.length && (!t || !f.types.includes(t.type))) return false;
@@ -225,7 +228,7 @@ export function Board() {
   const linkChecked = useRef(false);
   const { data, error, mutate } = useSWR<BoardData>("board", api.board, {
     // Пока заявки разбираются — чаще, чтобы карточка обновилась сразу после разбора
-    refreshInterval: (latest) => (latest?.leads.some(isPending) ? 2000 : 15000),
+    refreshInterval: boardRefresh,
     onSuccess: () => {
       // Заявку из ссылки ?lead=… открываем, как только загрузилась доска (ссылки из Telegram)
       if (linkChecked.current) return;

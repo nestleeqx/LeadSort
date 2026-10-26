@@ -130,6 +130,14 @@ class LeadCreate(BaseModel):
     text: str
 
 
+class FormSubmit(BaseModel):
+    """Заявка с формы на сайте студии: поля как на настоящем сайте."""
+
+    name: str = Field(default="", max_length=80)
+    contact: str = Field(default="", max_length=120)
+    message: str = Field(default="", max_length=3000)
+
+
 class LeadMove(BaseModel):
     status: Column
     # Без позиции карточка встаёт наверх колонки (смена колонки из карточки заявки)

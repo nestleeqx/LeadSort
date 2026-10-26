@@ -28,6 +28,10 @@ import { HighlightedText, HighlightLegend } from "../HighlightedText";
 import { useToast } from "../Toast";
 import { Button, Panel, SectionLabel } from "../ui";
 
+// Функция опроса — вне компонента: новая функция на каждой отрисовке перезапускает таймер SWR
+const leadRefresh = (latest?: LeadDetail) =>
+  latest && (latest.state === "queued" || latest.state === "running") ? 2000 : 0;
+
 type Draft = {
   type: LeadType;
   urgency: Urgency;
@@ -404,7 +408,7 @@ export function LeadDrawer({
     mutate,
   } = useSWR<LeadDetail>(["lead", id], () => api.lead(id), {
     fallbackData: initial ? { ...initial, events: [] } : undefined,
-    refreshInterval: (latest) => (latest && (latest.state === "queued" || latest.state === "running") ? 2000 : 0),
+    refreshInterval: leadRefresh,
   });
   const [busy, setBusy] = useState(false);
   const pending = lead?.state === "queued" || lead?.state === "running";

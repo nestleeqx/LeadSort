@@ -6,9 +6,17 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.deps import IpDep, QueueDep, RedisDep, SessionDep, VisitorDep
 from app.models import Lead
-from app.schemas import BoardOut, LeadCreate, LeadDetail, LeadMove, LeadOut, TriageEdit
+from app.schemas import (
+    BoardOut,
+    FormSubmit,
+    LeadCreate,
+    LeadDetail,
+    LeadMove,
+    LeadOut,
+    TriageEdit,
+)
 from app.services.demo import ensure_visitor, reset_demo
-from app.services.leads import add_event, create_lead, edit_triage, move_lead
+from app.services.leads import add_event, create_lead, edit_triage, form_text, move_lead
 from app.services.redis_store import hit_limit
 
 router = APIRouter(prefix="/api", tags=["leads"])
@@ -75,9 +83,36 @@ async def add_lead(
     return LeadOut.model_validate(lead)
 
 
+@router.post("/form", response_model=LeadOut, status_code=201)
+async def submit_form(
+    body: FormSubmit,
+    session: SessionDep,
+    visitor: VisitorDep,
+    redis: RedisDep,
+    ip: IpDep,
+    queue: QueueDep,
+):
+    """Заявка с формы на сайте студии «Пиксель». Ответ — сразу, разбор идёт в фоне."""
+    name, contact, message = body.name.strip(), body.contact.strip(), body.message.strip()
+    if not message and not contact:
+        raise HTTPException(422, "Напишите, что нужно сделать, или оставьте контакт для связи.")
+    await ensure_visitor(session, visitor)
+    await hit_limit(redis, "triage", ip, get_settings().triages_per_hour)
+    lead = await create_lead(session, visitor, "form", form_text(name, contact, message))
+    await session.commit()
+    if not queue.polling:
+        await queue.kick(visitor)
+    return LeadOut.model_validate(lead)
+
+
 @router.get("/leads/{lead_id}", response_model=LeadDetail)
-async def lead_detail(lead_id: str, session: SessionDep, visitor: VisitorDep):
-    return LeadDetail.model_validate(await _lead(session, visitor, lead_id, events=True))
+async def lead_detail(lead_id: str, session: SessionDep, visitor: VisitorDep, queue: QueueDep):
+    lead = await _lead(session, visitor, lead_id, events=True)
+    if queue.polling and lead.state in {"queued", "running"}:
+        # Без фоновых процессов заявку разбирает опрос — со страницы формы или с доски
+        await queue.kick(visitor)
+        return await _detail(session, visitor, lead_id)
+    return LeadDetail.model_validate(lead)
 
 
 @router.patch("/leads/{lead_id}", response_model=LeadOut)
