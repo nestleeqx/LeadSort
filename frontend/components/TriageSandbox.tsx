@@ -7,6 +7,7 @@ import {
   Check,
   CircleHelp,
   Copy,
+  KanbanSquare,
   Mail,
   Phone,
   Send,
@@ -16,10 +17,12 @@ import {
   Wand2,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { formatSeconds, NOT_SPECIFIED, TYPES, URGENCY } from "@/lib/labels";
 import { SAMPLES } from "@/lib/samples";
-import type { Highlight, Limits, TriageResponse } from "@/lib/types";
+import type { Limits, TriageResponse } from "@/lib/types";
+import { HighlightedText, HighlightLegend } from "./HighlightedText";
 import { useToast } from "./Toast";
 import { Button, Panel, SectionLabel } from "./ui";
 
@@ -41,24 +44,6 @@ function useCopy() {
       }
     },
   };
-}
-
-/** Исходный текст заявки с подсветкой найденных контактов. */
-function HighlightedText({ text, highlights }: { text: string; highlights: Highlight[] }) {
-  const parts: ReactNode[] = [];
-  let pos = 0;
-  for (const h of highlights) {
-    if (h.start < pos) continue;
-    parts.push(text.slice(pos, h.start));
-    parts.push(
-      <mark key={h.start} className={h.kind === "name" ? "hl hl-name" : "hl"}>
-        {text.slice(h.start, h.end)}
-      </mark>,
-    );
-    pos = h.end;
-  }
-  parts.push(text.slice(pos));
-  return <p className="text-sm leading-relaxed whitespace-pre-wrap text-ink-2">{parts}</p>;
 }
 
 function ContactLine({
@@ -100,7 +85,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Result({ data }: { data: TriageResponse }) {
+function Result({ data, onSend, sending }: { data: TriageResponse; onSend: () => void; sending: boolean }) {
   const { triage: t, notes } = data;
   const { copy, copied } = useCopy();
   const type = TYPES[t.type];
@@ -232,12 +217,19 @@ function Result({ data }: { data: TriageResponse }) {
         </div>
       )}
 
-      <p className="flex items-center gap-1.5 border-t border-line pt-3 text-xs text-ink-3">
-        <Sparkles className="size-3.5" />
-        {data.method === "rules"
-          ? "Разобрано по правилам, без нейросети"
-          : `Разобрано за ${formatSeconds(data.elapsed_ms)}`}
-      </p>
+      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-3">
+        <p className="mr-auto flex items-center gap-1.5 text-xs text-ink-3">
+          <Sparkles className="size-3.5" />
+          {data.method === "rules"
+            ? "Разобрано по правилам, без нейросети"
+            : data.elapsed_ms < 300
+              ? "Разобрано мгновенно: такой же текст уже разбирали"
+              : `Разобрано за ${formatSeconds(data.elapsed_ms)}`}
+        </p>
+        <Button size="sm" icon={<KanbanSquare className="size-3.5" />} loading={sending} onClick={onSend}>
+          Отправить на доску
+        </Button>
+      </div>
     </div>
   );
 }
@@ -280,6 +272,8 @@ function Placeholder({ loading }: { loading: boolean }) {
 
 export function TriageSandbox() {
   const toast = useToast();
+  const router = useRouter();
+  const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ text: string; data: TriageResponse } | null>(null);
@@ -312,6 +306,20 @@ export function TriageSandbox() {
     }
   }
 
+  // Песочница ничего не сохраняет; эта кнопка создаёт из текста заявку на доске.
+  // Разбор берётся из кеша, поэтому карточка на доске появляется уже разобранной.
+  async function sendToBoard() {
+    if (!result) return;
+    setSending(true);
+    try {
+      const lead = await api.addLead(result.text);
+      router.push(`/app?lead=${lead.id}`);
+    } catch (e) {
+      toast.error(e);
+      setSending(false);
+    }
+  }
+
   return (
     // Порядок в разметке — для телефона: форма, результат, текст с подсветкой.
     // На широком экране результат справа на всю высоту.
@@ -328,7 +336,7 @@ export function TriageSandbox() {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submit();
           }}
           placeholder="Вставьте письмо, сообщение из мессенджера или текст из формы на сайте"
-          className="block min-h-56 w-full resize-y rounded-lg border border-line bg-canvas px-3.5 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-3 focus:border-line-strong focus:bg-surface"
+          className="block min-h-56 w-full resize-none rounded-lg field-sizing-content max-h-[60vh] border border-line bg-canvas px-3.5 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-3 focus:border-line-strong focus:bg-surface"
         />
         <div className="mt-2 flex items-center justify-between text-xs">
           <span className={tooLong ? "font-semibold text-danger" : "text-ink-3"}>
@@ -373,7 +381,11 @@ export function TriageSandbox() {
 
       <div ref={resultRef} className="scroll-mt-4 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <Panel className="p-4 sm:p-6">
-          {result && !loading ? <Result data={result.data} /> : <Placeholder loading={loading} />}
+          {result && !loading ? (
+            <Result data={result.data} onSend={sendToBoard} sending={sending} />
+          ) : (
+            <Placeholder loading={loading} />
+          )}
         </Panel>
       </div>
 
@@ -381,14 +393,7 @@ export function TriageSandbox() {
         <Panel className="rise p-4 sm:p-5 lg:col-start-1">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <SectionLabel className="">Что нашли в тексте</SectionLabel>
-            <span className="flex items-center gap-3 text-[11px] text-ink-3">
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-sm bg-lime-strong" /> контакты
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-sm bg-[#9db6e8]" /> имя
-              </span>
-            </span>
+            <HighlightLegend />
           </div>
           <HighlightedText text={result.text} highlights={result.data.highlights} />
         </Panel>

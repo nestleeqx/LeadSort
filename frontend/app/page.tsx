@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Лендинг сервиса появится на этапе 5, пока главная ведёт в песочницу разбора
+// Лендинг сервиса появится на этапе 5, пока главная ведёт на доску
 export default function Home() {
-  redirect("/try");
+  redirect("/app");
 }

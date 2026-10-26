@@ -5,6 +5,7 @@ const VARIANTS = {
   primary: "bg-ink text-white hover:bg-ink/85 shadow-[0_1px_0_rgba(0,0,0,.08)]",
   secondary: "border border-line bg-surface text-ink hover:bg-sunken",
   ghost: "text-ink-2 hover:bg-sunken hover:text-ink",
+  destructive: "bg-danger text-white hover:bg-danger/90 shadow-[0_1px_0_rgba(0,0,0,.08)]",
 };
 
 export function buttonClasses(variant: keyof typeof VARIANTS = "secondary", size: "sm" | "md" = "md") {

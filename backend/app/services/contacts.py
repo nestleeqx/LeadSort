@@ -12,10 +12,12 @@ from dataclasses import dataclass, field
 
 # Российский номер: необязательный префикс +7 / 8 / 7, код из трёх цифр и ещё семь цифр
 # с любыми одиночными разделителями: 8 (916) 123-45-67, +7 916 1234567, 89161234567…
+# Настоящие коды начинаются на 3, 4, 8, 9; остальные принимаем только с префиксом +7 или 8 —
+# в демо пишут и выдуманные номера вроде +7 231 231-12-23
 _RU_PHONE = re.compile(
     r"(?<![\d+])"
     r"(?P<prefix>\+\s?7|8|7)?[\s\-]{0,2}"
-    r"(?P<open>\()?\s?(?P<code>[34789]\d{2})\s?\)?"
+    r"(?P<open>\()?\s?(?P<code>[2-9]\d{2})\s?\)?"
     r"(?P<rest>(?:[\s\-]{0,2}\d){7})"
     r"(?!\d)"
 )
@@ -77,14 +79,16 @@ def normalize_phone(raw: str) -> str | None:
     digits = re.sub(r"\D", "", raw)
     plus = raw.lstrip().startswith("+")
     if len(digits) == 11 and digits[0] in "78" and (digits[0] == "7" or not plus):
+        # С префиксом подходит любой код, кроме начинающихся на 0 и 1
         digits = digits[1:]
+        if digits[0] in "01":
+            return None
     elif len(digits) == 10 and not plus:
-        pass
+        if digits[0] not in "3489":
+            return None
     elif plus and 9 <= len(digits) <= 14 and not digits.startswith("7"):
         return "+" + digits
     else:
-        return None
-    if digits[0] not in "34789":
         return None
     return format_ru_phone(digits)
 
@@ -98,8 +102,9 @@ def _phones(text: str) -> list[Found]:
         # слишком часто оказываются номером договора
         if not m["prefix"] and not m["open"] and m["code"][0] != "9":
             continue
-        # Коды на 7 — Казахстан, их пишут только с +7
-        if m["code"][0] == "7" and not (m["prefix"] or "").startswith("+"):
+        # Коды не на 3, 4, 8, 9 — только с явным +7 или 8: иначе это скорее число из текста
+        prefix = (m["prefix"] or "").replace(" ", "")
+        if m["code"][0] not in "3489" and prefix not in {"+7", "8"}:
             continue
         digits = m["code"] + re.sub(r"\D", "", m["rest"])
         value, end = format_ru_phone(digits), m.end()
@@ -167,13 +172,15 @@ def phone_in_text(phone: str, text: str) -> str | None:
     Нейросеть может вернуть номер как в тексте — с добавочным или в непривычной записи,
     поэтому сначала разбираем её ответ теми же регулярками.
     """
+    text_digits = re.sub(r"\D", "", text)
     parsed = _phones(phone)
     value = parsed[0].value if parsed else normalize_phone(phone)
-    if not value:
-        return None
-    number = value.split(",")[0]
-    tail = re.sub(r"\D", "", number)[-10:]
-    return value if tail in re.sub(r"\D", "", text) else None
+    if value:
+        tail = re.sub(r"\D", "", value.split(",")[0])[-10:]
+        return value if tail in text_digits else None
+    # Привести к одному виду не вышло, но цифры номера в тексте есть — оставляем как написано
+    digits = re.sub(r"\D", "", phone)
+    return phone.strip() if len(digits) >= 7 and digits in text_digits else None
 
 
 def email_in_text(email: str, text: str) -> str | None:

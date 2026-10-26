@@ -6,23 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import triage
+from app.api import leads, misc, triage
 from app.config import get_settings
+from app.db import SessionLocal, init_db
 from app.llm import create_provider
-from app.services.redis_store import RateLimitExceeded
+from app.services.processing import InlineQueue, PollQueue
+from app.services.redis_store import RateLimitExceeded, get_redis
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
 
 LIMIT_MESSAGES = {
     "triage": "Лимит демо: {limit} разборов в час",
+    "reset": "Слишком частый сброс демо",
 }
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.provider = create_provider(get_settings())
+    settings = get_settings()
+    await init_db()
+    app.state.provider = create_provider(settings)
+    queue_cls = PollQueue if settings.queue_mode == "poll" else InlineQueue
+    app.state.queue = queue_cls(
+        SessionLocal, app.state.provider, get_redis(), settings.worker_concurrency
+    )
     yield
+    await app.state.queue.drain()
     await app.state.provider.aclose()
 
 
@@ -68,4 +78,6 @@ async def rate_limited(_: Request, exc: RateLimitExceeded):
     )
 
 
+app.include_router(misc.router)
 app.include_router(triage.router)
+app.include_router(leads.router)

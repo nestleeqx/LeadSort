@@ -134,3 +134,27 @@ def test_ai_contacts_written_as_in_text_are_accepted():
     text = "почта alina.zerno [at] gmail.com, тел 8-495-777-12-34 доб. 105"
     assert email_in_text("alina.zerno [at] gmail.com", text) == "alina.zerno@gmail.com"
     assert phone_in_text("8-495-777-12-34 доб. 105", text) == "+7 (495) 777-12-34, доб. 105"
+
+
+@pytest.mark.parametrize(
+    ("text", "phone"),
+    [
+        ("Мои контакты +7 231 231 12 23, работа не срочная", "+7 (231) 231-12-23"),
+        ("звоните 8 (555) 123-45-67", "+7 (555) 123-45-67"),
+        ("+7 (701) 123-45-67 — Алматы", "+7 (701) 123-45-67"),
+    ],
+)
+def test_made_up_codes_with_prefix(text, phone):
+    """В демо пишут выдуманные номера: с явным +7 или 8 любой код — телефон."""
+    assert [p.value for p in find_contacts(text).phones] == [phone]
+
+
+def test_made_up_codes_without_prefix_are_not_phones():
+    assert find_contacts("договор 2312311223 от 12.03").phones == []
+    assert find_contacts("артикул 7012345678").phones == []
+
+
+def test_ai_phone_kept_as_written_when_digits_are_in_text():
+    text = "звоните на 123-45-67, спросить Олега"
+    assert phone_in_text("123-45-67", text) == "123-45-67"
+    assert phone_in_text("765-43-21", text) is None

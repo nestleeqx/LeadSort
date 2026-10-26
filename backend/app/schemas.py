@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 LeadType = Literal["new_site", "improvement", "support", "question", "spam"]
 Urgency = Literal["high", "medium", "low"]
@@ -81,3 +82,69 @@ class LimitsOut(BaseModel):
     triages_per_hour: int
     triages_left: int
     provider: str
+
+
+# --- Доска ---
+
+Channel = Literal["form", "telegram", "manual"]
+Column = Literal["new", "in_progress", "waiting", "closed", "spam"]
+LeadState = Literal["queued", "running", "done", "error"]
+
+
+class LeadOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    channel: Channel
+    status: Column
+    position: float
+    text: str
+    state: LeadState
+    error: str | None
+    triage: Triage | None
+    highlights: list[Highlight]
+    notes: list[str]
+    method: Literal["ai", "rules"] | None
+    elapsed_ms: int | None
+    edited: list[str]
+    demo_id: str | None
+    created_at: datetime
+
+
+class LeadEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    at: datetime
+    text: str
+
+
+class LeadDetail(LeadOut):
+    events: list[LeadEventOut]
+
+
+class BoardOut(BaseModel):
+    leads: list[LeadOut]
+
+
+class LeadCreate(BaseModel):
+    text: str
+
+
+class LeadMove(BaseModel):
+    status: Column
+    # Без позиции карточка встаёт наверх колонки (смена колонки из карточки заявки)
+    position: float | None = None
+
+
+class TriageEdit(BaseModel):
+    """Ручная правка разбора: приходят только изменённые поля."""
+
+    type: LeadType | None = None
+    urgency: Urgency | None = None
+    urgency_reason: str | None = Field(default=None, max_length=300)
+    contacts: Contacts | None = None
+    budget: str | None = Field(default=None, max_length=200)
+    deadline: str | None = Field(default=None, max_length=200)
+    summary: str | None = Field(default=None, max_length=1000)
+    missing: list[str] | None = Field(default=None, max_length=10)
+    reply_draft: str | None = Field(default=None, max_length=4000)

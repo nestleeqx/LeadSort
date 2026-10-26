@@ -1,9 +1,24 @@
-import type { Limits, TriageResponse } from "./types";
+import type { Board, Column, Lead, LeadDetail, Limits, Triage, TriageResponse } from "./types";
 
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
-  /\/$/,
-  "",
-);
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+
+const VISITOR_KEY = "leadsort:visitor";
+
+/** Анонимный id посетителя: у каждого своя доска с копией демо-заявок. */
+export function visitorId(): string {
+  let id: string | null = null;
+  try {
+    id = localStorage.getItem(VISITOR_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(VISITOR_KEY, id);
+    }
+  } catch {
+    // Приватный режим без localStorage — id живёт до перезагрузки
+    id ??= (globalThis as { __visitor?: string }).__visitor ??= crypto.randomUUID();
+  }
+  return id;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -32,6 +47,7 @@ async function errorMessage(resp: Response): Promise<string> {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
+  headers.set("X-Visitor-Id", visitorId());
   if (init.body) headers.set("Content-Type", "application/json");
 
   let resp: Response;
@@ -44,8 +60,23 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return resp.json();
 }
 
+const json = (method: string, body?: unknown): RequestInit => ({
+  method,
+  body: body === undefined ? undefined : JSON.stringify(body),
+});
+
 export const api = {
   limits: () => request<Limits>("/api/limits"),
-  triage: (text: string) =>
-    request<TriageResponse>("/api/triage", { method: "POST", body: JSON.stringify({ text }) }),
+  triage: (text: string) => request<TriageResponse>("/api/triage", json("POST", { text })),
+
+  board: () => request<Board>("/api/leads"),
+  lead: (id: string) => request<LeadDetail>(`/api/leads/${id}`),
+  addLead: (text: string) => request<Lead>("/api/leads", json("POST", { text })),
+  /** Без position карточка встаёт наверх колонки. */
+  moveLead: (id: string, status: Column, position?: number) =>
+    request<Lead>(`/api/leads/${id}`, json("PATCH", { status, position })),
+  editLead: (id: string, patch: Partial<Omit<Triage, "notify">>) =>
+    request<LeadDetail>(`/api/leads/${id}/triage`, json("PATCH", patch)),
+  retriage: (id: string) => request<LeadDetail>(`/api/leads/${id}/retriage`, json("POST")),
+  resetDemo: () => request<Board>("/api/demo/reset", json("POST")),
 };
