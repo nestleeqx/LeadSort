@@ -107,7 +107,9 @@ export default function PixelPage() {
 
       <header className="sticky top-0 z-30 border-b border-px-soft bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
-          <PixelLogo />
+          <Link href="/pixel" aria-label="Веб-студия «Пиксель» — наверх">
+            <PixelLogo />
+          </Link>
           <nav className="ml-auto hidden items-center gap-6 text-sm text-px-ink/70 md:flex">
             <a href="#services" className="hover:text-px-ink">
               Услуги и цены

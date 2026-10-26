@@ -71,6 +71,9 @@ class Lead(Base):
     events: Mapped[list["LeadEvent"]] = relationship(
         back_populates="lead", cascade="all, delete-orphan", order_by="LeadEvent.id"
     )
+    crm_requests: Mapped[list["CrmRequest"]] = relationship(
+        cascade="all, delete-orphan", order_by="CrmRequest.id"
+    )
 
 
 class LeadEvent(Base):
@@ -84,3 +87,18 @@ class LeadEvent(Base):
     text: Mapped[str] = mapped_column(Text)
 
     lead: Mapped[Lead] = relationship(back_populates="events")
+
+
+class CrmRequest(Base):
+    """Отправка заявки в CRM. В демо запрос не уходит — сохраняется, что было бы отправлено."""
+
+    __tablename__ = "crm_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    lead_id: Mapped[str] = mapped_column(ForeignKey("leads.id", ondelete="CASCADE"), index=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # amocrm | bitrix24
+    crm: Mapped[str] = mapped_column(String(16))
+    # {method, url, headers, body} и ответ, который вернула бы CRM
+    request: Mapped[dict[str, Any]] = mapped_column(JSONType)
+    response: Mapped[dict[str, Any]] = mapped_column(JSONType)

@@ -58,8 +58,32 @@ export type Lead = {
   created_at: string;
 };
 
+export type Crm = "amocrm" | "bitrix24";
+
+export type CrmRequest = {
+  at: string;
+  crm: Crm;
+  request: { method: string; url: string; headers: Record<string, string>; body: unknown };
+  response: { status: number; body: unknown };
+};
+
 export type LeadDetail = Lead & {
   events: { at: string; text: string }[];
+  crm_requests: CrmRequest[];
+};
+
+export type Stats = {
+  total: number;
+  week_total: number;
+  week_spam: number;
+  spam_share: number;
+  urgent_open: number;
+  avg_triage_ms: number | null;
+  edited_share: number;
+  by_day: { date: string; total: number; spam: number }[];
+  by_type: { key: LeadType; count: number }[];
+  by_channel: { key: Channel; count: number }[];
+  by_status: { key: Column; count: number }[];
 };
 
 export type Board = { leads: Lead[] };

@@ -1,4 +1,4 @@
-import type { Board, Column, Lead, LeadDetail, Limits, Triage, TriageResponse } from "./types";
+import type { Board, Column, Crm, Lead, LeadDetail, Limits, Stats, Triage, TriageResponse } from "./types";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
@@ -60,6 +60,24 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return resp.json();
 }
 
+/** Скачивание файла: имя берётся из Content-Disposition. */
+async function download(path: string, fallbackName: string) {
+  let resp: Response;
+  try {
+    resp = await fetch(API_URL + path, { headers: { "X-Visitor-Id": visitorId() } });
+  } catch {
+    throw new ApiError(NETWORK_ERROR, 0);
+  }
+  if (!resp.ok) throw new ApiError(await errorMessage(resp), resp.status);
+  const match = /filename="([^"]+)"/.exec(resp.headers.get("Content-Disposition") ?? "");
+  const url = URL.createObjectURL(await resp.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = match ? match[1] : fallbackName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const json = (method: string, body?: unknown): RequestInit => ({
   method,
   body: body === undefined ? undefined : JSON.stringify(body),
@@ -81,4 +99,7 @@ export const api = {
     request<LeadDetail>(`/api/leads/${id}/triage`, json("PATCH", patch)),
   retriage: (id: string) => request<LeadDetail>(`/api/leads/${id}/retriage`, json("POST")),
   resetDemo: () => request<Board>("/api/demo/reset", json("POST")),
+  sendToCrm: (id: string, crm: Crm) => request<LeadDetail>(`/api/leads/${id}/crm`, json("POST", { crm })),
+  stats: () => request<Stats>("/api/stats"),
+  exportCsv: () => download("/api/export/leads.csv", "leadsort.csv"),
 };

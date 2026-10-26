@@ -13,7 +13,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Lead, LeadEvent, Visitor
+from app.models import CrmRequest, Lead, LeadEvent, Visitor
 from app.services.leads import CHANNELS, add_event, triaged_text
 
 SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
@@ -97,6 +97,7 @@ async def _delete_boards(session: AsyncSession, visitor_ids: list[str]) -> None:
     # Удаляем явно, а не каскадом: в SQLite внешние ключи по умолчанию не проверяются
     lead_ids = select(Lead.id).where(Lead.visitor_id.in_(visitor_ids))
     await session.execute(delete(LeadEvent).where(LeadEvent.lead_id.in_(lead_ids)))
+    await session.execute(delete(CrmRequest).where(CrmRequest.lead_id.in_(lead_ids)))
     await session.execute(delete(Lead).where(Lead.visitor_id.in_(visitor_ids)))
 
 

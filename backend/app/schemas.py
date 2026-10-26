@@ -118,8 +118,47 @@ class LeadEventOut(BaseModel):
     text: str
 
 
+class CrmRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    at: datetime
+    crm: Literal["amocrm", "bitrix24"]
+    request: dict
+    response: dict
+
+
 class LeadDetail(LeadOut):
     events: list[LeadEventOut]
+    crm_requests: list[CrmRequestOut]
+
+
+class CrmSend(BaseModel):
+    crm: Literal["amocrm", "bitrix24"]
+
+
+class Count(BaseModel):
+    key: str
+    count: int
+
+
+class DayCount(BaseModel):
+    date: str
+    total: int
+    spam: int
+
+
+class StatsOut(BaseModel):
+    total: int
+    week_total: int
+    week_spam: int
+    spam_share: float
+    urgent_open: int
+    avg_triage_ms: int | None
+    edited_share: float
+    by_day: list[DayCount]
+    by_type: list[Count]
+    by_channel: list[Count]
+    by_status: list[Count]
 
 
 class BoardOut(BaseModel):

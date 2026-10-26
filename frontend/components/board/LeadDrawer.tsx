@@ -24,6 +24,7 @@ import { CHANNELS, COLUMNS, FIELDS, TYPES, URGENCY, formatDateTime, formatSecond
 import { maskPhone, maskTelegram } from "@/lib/phone";
 import type { Column, Lead, LeadDetail, LeadType, Triage, TriageField, Urgency } from "@/lib/types";
 import { useConfirm } from "../Confirm";
+import { CrmPanel } from "./CrmPanel";
 import { HighlightedText, HighlightLegend } from "../HighlightedText";
 import { useToast } from "../Toast";
 import { Button, Panel, SectionLabel } from "../ui";
@@ -407,7 +408,7 @@ export function LeadDrawer({
     error,
     mutate,
   } = useSWR<LeadDetail>(["lead", id], () => api.lead(id), {
-    fallbackData: initial ? { ...initial, events: [] } : undefined,
+    fallbackData: initial ? { ...initial, events: [], crm_requests: [] } : undefined,
     refreshInterval: leadRefresh,
   });
   const [busy, setBusy] = useState(false);
@@ -558,6 +559,7 @@ export function LeadDrawer({
                     </ul>
                   </div>
                 )}
+                <CrmPanel lead={lead} onSent={update} />
                 <Panel className="p-4">
                   <SectionLabel>История</SectionLabel>
                   <ol className="mt-2 space-y-2.5">

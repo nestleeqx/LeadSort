@@ -1,23 +1,31 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.deps import IpDep, QueueDep, RedisDep, SessionDep, VisitorDep
-from app.models import Lead
+from app.models import CrmRequest, Lead
 from app.schemas import (
     BoardOut,
+    CrmSend,
     FormSubmit,
     LeadCreate,
     LeadDetail,
     LeadMove,
     LeadOut,
+    StatsOut,
     TriageEdit,
 )
+from app.services.crm import CRM_NAMES, build_request, demo_response
 from app.services.demo import ensure_visitor, reset_demo
+from app.services.export import leads_csv
 from app.services.leads import add_event, create_lead, edit_triage, form_text, move_lead
 from app.services.redis_store import hit_limit
+from app.services.stats import board_stats
 
 router = APIRouter(prefix="/api", tags=["leads"])
 
@@ -32,7 +40,7 @@ async def _board(session: AsyncSession, visitor: str) -> BoardOut:
 async def _lead(session: AsyncSession, visitor: str, lead_id: str, events: bool = False) -> Lead:
     query = select(Lead).where(Lead.id == lead_id, Lead.visitor_id == visitor)
     if events:
-        query = query.options(selectinload(Lead.events))
+        query = query.options(selectinload(Lead.events), selectinload(Lead.crm_requests))
     lead = await session.scalar(query)
     if lead is None:
         raise HTTPException(404, "Заявка не найдена — возможно, демо сбросили. Обновите страницу.")
@@ -165,3 +173,45 @@ async def reset(session: SessionDep, visitor: VisitorDep, redis: RedisDep, ip: I
     await ensure_visitor(session, visitor)
     await reset_demo(session, visitor)
     return await _board(session, visitor)
+
+
+@router.post("/leads/{lead_id}/crm", response_model=LeadDetail)
+async def send_to_crm(lead_id: str, body: CrmSend, session: SessionDep, visitor: VisitorDep):
+    """Передать заявку в amoCRM или Битрикс24. В демо — запрос собирается, но не отправляется."""
+    lead = await _lead(session, visitor, lead_id)
+    if lead.triage is None:
+        raise HTTPException(409, "Заявка ещё разбирается — подождите несколько секунд.")
+    session.add(
+        CrmRequest(
+            lead_id=lead.id,
+            crm=body.crm,
+            request=build_request(body.crm, lead),
+            response=demo_response(body.crm),
+        )
+    )
+    add_event(
+        session, lead.id, f"Передана в {CRM_NAMES[body.crm]} (демо: запрос сохранён, не отправлен)"
+    )
+    await session.commit()
+    return await _detail(session, visitor, lead_id)
+
+
+async def _all_leads(session: AsyncSession, visitor: str) -> list[Lead]:
+    await ensure_visitor(session, visitor)
+    return list(await session.scalars(select(Lead).where(Lead.visitor_id == visitor)))
+
+
+@router.get("/stats", response_model=StatsOut)
+async def stats(session: SessionDep, visitor: VisitorDep):
+    return board_stats(await _all_leads(session, visitor))
+
+
+@router.get("/export/leads.csv")
+async def export_csv(session: SessionDep, visitor: VisitorDep):
+    """Все заявки доски в CSV для Excel и Google Таблиц."""
+    name = f"leadsort-{datetime.now(UTC).date().isoformat()}.csv"
+    return Response(
+        leads_csv(await _all_leads(session, visitor)),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )

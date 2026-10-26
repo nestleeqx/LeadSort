@@ -20,7 +20,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronLeft, ChevronRight, Plus, RotateCcw, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
@@ -242,6 +242,7 @@ export function Board() {
   const [spamOpen, setSpamOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ id: string; over: Column | null } | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
@@ -344,6 +345,17 @@ export function Board() {
     }
   }
 
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      await api.exportCsv();
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function resetDemo() {
     const ok = await confirm({
       title: "Сбросить демо?",
@@ -385,9 +397,22 @@ export function Board() {
           icon={<RotateCcw className="size-4" />}
           loading={resetting}
           onClick={resetDemo}
+          title="Сбросить демо"
+          aria-label="Сбросить демо"
           className="max-sm:order-last"
         >
-          Сбросить демо
+          <span className="max-sm:hidden">Сбросить демо</span>
+        </Button>
+        <Button
+          icon={<Download className="size-4" />}
+          loading={exporting}
+          onClick={exportCsv}
+          title="Скачать все заявки в CSV"
+          aria-label="Экспорт в CSV"
+          className="max-sm:order-last"
+        >
+          {/* На телефоне — только иконка, чтобы три кнопки встали в один ряд */}
+          <span className="max-sm:hidden">Экспорт в CSV</span>
         </Button>
         <Button
           variant="primary"
