@@ -83,6 +83,24 @@ OPENAI_MODEL=gpt-5.6-luna
 OPENAI_REASONING_EFFORT=none
 ```
 
+## Деплой на Vercel
+
+Фронтенд и бэкенд — два проекта Vercel из одного репозитория (Root Directory `frontend` и `backend`). База — Postgres (Neon), кеш и лимиты — Redis (Upstash), обе подключаются через вкладку Storage, переменные подставляются сами.
+
+На Vercel нет постоянного процесса для фонового разбора, поэтому включается режим `QUEUE_MODE=poll` (выбирается сам по переменной `VERCEL`): заявка сохраняется сразу, а разбирает её следующий опрос — со страницы формы или с доски. Ночная очистка — Vercel Cron, раз в сутки вызывает `/api/cron/cleanup` с `CRON_SECRET`.
+
+| Проект | Переменная | Значение |
+| --- | --- | --- |
+| backend | `LLM_PROVIDER` | `openai` |
+| backend | `OPENAI_API_KEY` | ключ OpenAI |
+| backend | `OPENAI_MODEL` | `gpt-5.6-luna` |
+| backend | `OPENAI_REASONING_EFFORT` | `none` |
+| backend | `CORS_ORIGINS` | адрес фронтенда, `https://….vercel.app` |
+| backend | `CORS_ORIGIN_REGEX` | превью-деплои, например `^https://leadsort-.*\.vercel\.app$` |
+| backend | `CRON_SECRET` | случайная строка |
+| backend | `DATABASE_URL…`, `REDIS_URL` / `KV_URL` | подставляют Neon и Upstash |
+| frontend | `NEXT_PUBLIC_API_URL` | адрес бэкенда, `https://….vercel.app` |
+
 ### Тесты
 
 ```bash

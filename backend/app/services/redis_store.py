@@ -9,6 +9,10 @@ from app.llm import LLMProvider
 
 _redis: Redis | None = None
 
+# Общий префикс ключей: Redis можно делить с другими проектами (в демо — с CardForge),
+# и ни лимиты, ни кеш не пересекутся
+PREFIX = "leadsort:"
+
 
 def get_redis() -> Redis:
     global _redis
@@ -31,7 +35,7 @@ async def cached_complete[T: BaseModel](
     digest = hashlib.sha256(
         "\x00".join([provider.name, provider.model, schema.__name__, system, user]).encode()
     ).hexdigest()
-    key = f"llm:{digest}"
+    key = f"{PREFIX}llm:{digest}"
     hit = await redis.get(key)
     if hit:
         return schema.model_validate_json(hit)
@@ -56,7 +60,7 @@ def _window() -> tuple[int, int]:
 
 async def hit_limit(redis: Redis, scope: str, ip: str, limit: int, cost: int = 1) -> None:
     bucket, retry_after = _window()
-    key = f"rl:{scope}:{ip}:{bucket}"
+    key = f"{PREFIX}rl:{scope}:{ip}:{bucket}"
     used = await redis.incrby(key, cost)
     if used == cost:
         await redis.expire(key, 3600)
@@ -67,5 +71,5 @@ async def hit_limit(redis: Redis, scope: str, ip: str, limit: int, cost: int = 1
 
 async def remaining(redis: Redis, scope: str, ip: str, limit: int) -> int:
     bucket, _ = _window()
-    used = int(await redis.get(f"rl:{scope}:{ip}:{bucket}") or 0)
+    used = int(await redis.get(f"{PREFIX}rl:{scope}:{ip}:{bucket}") or 0)
     return max(0, limit - used)
