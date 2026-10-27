@@ -1,0 +1,5 @@
+// Знак LeadSort строкой — для картинок, которые рисует next/og (превью ссылки, иконка iOS).
+// Тот же рисунок, что в components/Logo.tsx и app/icon.svg
+export const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#2563eb"/><rect x="7.5" y="8.5" width="15" height="3.2" rx="1.6" fill="#fff"/><rect x="7.5" y="14.4" width="10" height="3.2" rx="1.6" fill="#fff" opacity=".8"/><rect x="7.5" y="20.3" width="5.5" height="3.2" rx="1.6" fill="#fff" opacity=".6"/><path d="M21.5 15.2Q21.9 20.1 26.8 20.5Q21.9 20.9 21.5 25.8Q21.1 20.9 16.2 20.5Q21.1 20.1 21.5 15.2Z" fill="#cfe0ff"/></svg>`;
+
+export const LOGO_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(LOGO_SVG).toString("base64")}`;

@@ -43,7 +43,8 @@ export const FIELDS: Record<TriageField, string> = {
 export const NOT_SPECIFIED = "не указано";
 
 export function formatSeconds(ms: number) {
-  return `${(ms / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} с`;
+  // Неразрывный пробел: «с» не отрывается от числа при переносе строки
+  return `${(ms / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} с`;
 }
 
 export function plural(n: number, forms: [string, string, string]) {

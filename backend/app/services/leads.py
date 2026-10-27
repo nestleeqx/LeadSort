@@ -48,7 +48,8 @@ def triaged_text(method: str | None, elapsed_ms: int | None) -> str:
     if (elapsed_ms or 0) < CACHED_MS:
         return "Разобрана мгновенно: такой же текст уже разбирали"
     seconds = f"{(elapsed_ms or 0) / 1000:.1f}".replace(".", ",")
-    return f"Разобрана нейросетью за {seconds} с"
+    # Неразрывный пробел: «с» не уезжает на отдельную строку в узкой истории
+    return f"Разобрана нейросетью за {seconds} с"
 
 
 async def top_position(session: AsyncSession, visitor_id: str, status: str) -> float:
