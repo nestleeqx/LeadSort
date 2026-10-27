@@ -13,7 +13,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CrmRequest, Lead, LeadEvent, Visitor
+from app.models import CrmRequest, Lead, LeadEvent, TelegramChat, Visitor
 from app.services.leads import CHANNELS, add_event, triaged_text
 
 SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
@@ -112,6 +112,8 @@ async def cleanup_old(session: AsyncSession, ttl_hours: int) -> int:
     ids = list(await session.scalars(select(Visitor.id).where(Visitor.last_seen_at < cutoff)))
     if ids:
         await _delete_boards(session, ids)
+        # Чат без доски бот встретит как незнакомый — предложит подключиться заново
+        await session.execute(delete(TelegramChat).where(TelegramChat.visitor_id.in_(ids)))
         await session.execute(delete(Visitor).where(Visitor.id.in_(ids)))
         await session.commit()
     return len(ids)

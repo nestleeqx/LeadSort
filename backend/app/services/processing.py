@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.llm import LLMError, LLMProvider
 from app.models import Lead
+from app.services.alerts import notify_urgent
 from app.services.leads import add_event, apply_result
 from app.services.redis_store import PREFIX
 from app.services.triage import triage_lead
@@ -69,13 +70,15 @@ async def process_lead(
         lead = await session.get(Lead, lead_id)
         if lead is None or lead.state != "running":
             return
-        text = lead.text
+        text, channel = lead.text, lead.channel
+        # Уведомляем только о первом разборе: «Разобрать заново» не должно слать повтор
+        first = lead.triage is None
 
     fresh = bool(await redis.getdel(_fresh_key(lead_id)))
     started = time.perf_counter()
     result = error = None
     try:
-        result = await triage_lead(provider, redis, text, fresh=fresh)
+        result = await triage_lead(provider, redis, text, fresh=fresh, channel=channel)
     except LLMError as e:
         # Пользователь видит только понятный текст, подробности — в логе
         log.warning("Заявка %s: %s", lead_id, e)
@@ -96,6 +99,40 @@ async def process_lead(
             lead.error = error
             add_event(session, lead.id, "Не удалось разобрать")
         await session.commit()
+
+    # На заявку из Telegram бот отвечает в том же чате сам — отдельное уведомление не нужно
+    if result is not None and result.triage.notify and first and channel != "telegram":
+        await notify_urgent(sessions, lead_id)
+
+
+async def process_now(
+    sessions: async_sessionmaker,
+    provider: LLMProvider,
+    redis: Redis,
+    lead_id: str,
+    wait: float = 60.0,
+) -> None:
+    """Разобрать конкретную заявку сразу, в этом же запросе (так бот отвечает в чат).
+
+    Если заявку успел забрать фоновый разбор, ждём его результат.
+    """
+    async with sessions() as session:
+        result = await session.execute(
+            update(Lead)
+            .where(Lead.id == lead_id, Lead.state == "queued")
+            .values(state="running", started_at=datetime.now(UTC), error=None)
+        )
+        await session.commit()
+    if result.rowcount:
+        await process_lead(sessions, provider, redis, lead_id)
+        return
+    deadline = time.monotonic() + wait
+    while time.monotonic() < deadline:
+        async with sessions() as session:
+            state = await session.scalar(select(Lead.state).where(Lead.id == lead_id))
+        if state not in {"queued", "running"}:
+            return
+        await asyncio.sleep(0.5)
 
 
 class InlineQueue:

@@ -183,6 +183,17 @@ class LeadMove(BaseModel):
     position: float | None = None
 
 
+class TelegramStatus(BaseModel):
+    # Бот настроен на сервере (задан токен и Telegram ответил)
+    enabled: bool
+    # Названия чатов, привязанных к доске посетителя
+    chats: list[str] = []
+
+
+class TelegramLink(BaseModel):
+    url: str
+
+
 class TriageEdit(BaseModel):
     """Ручная правка разбора: приходят только изменённые поля."""
 

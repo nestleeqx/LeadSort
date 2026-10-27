@@ -6,14 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import leads, misc, triage
+from app.api import leads, misc, telegram, triage
 from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.llm import create_provider
 from app.services.processing import InlineQueue, PollQueue
 from app.services.redis_store import RateLimitExceeded, get_redis
+from app.services.telegram import get_telegram, set_telegram
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# httpx пишет адрес каждого запроса, а в адресе Bot API — токен бота
+logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 LIMIT_MESSAGES = {
@@ -34,6 +37,10 @@ async def lifespan(app: FastAPI):
     yield
     await app.state.queue.drain()
     await app.state.provider.aclose()
+    tg = get_telegram()
+    if tg is not None:
+        await tg.aclose()
+        set_telegram(None)
 
 
 app = FastAPI(title="LeadSort API", version="0.1.0", lifespan=lifespan)
@@ -81,3 +88,4 @@ async def rate_limited(_: Request, exc: RateLimitExceeded):
 app.include_router(misc.router)
 app.include_router(triage.router)
 app.include_router(leads.router)
+app.include_router(telegram.router)

@@ -9,6 +9,8 @@ os.environ.update(
     LLM_PROVIDER="mock",
     MOCK_DELAY="0",
     TRIAGES_PER_HOUR="30",
+    # Токен из .env разработчика не должен попасть в тесты: они не ходят в настоящий Telegram
+    TELEGRAM_BOT_TOKEN="",
 )
 
 import fakeredis  # noqa: E402

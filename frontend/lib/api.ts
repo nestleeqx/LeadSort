@@ -1,4 +1,15 @@
-import type { Board, Column, Crm, Lead, LeadDetail, Limits, Stats, Triage, TriageResponse } from "./types";
+import type {
+  Board,
+  Column,
+  Crm,
+  Lead,
+  LeadDetail,
+  Limits,
+  Stats,
+  TelegramStatus,
+  Triage,
+  TriageResponse,
+} from "./types";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
@@ -102,4 +113,9 @@ export const api = {
   sendToCrm: (id: string, crm: Crm) => request<LeadDetail>(`/api/leads/${id}/crm`, json("POST", { crm })),
   stats: () => request<Stats>("/api/stats"),
   exportCsv: () => download("/api/export/leads.csv", "leadsort.csv"),
+
+  telegram: () => request<TelegramStatus>("/api/telegram"),
+  /** Ссылка на бота с одноразовым токеном — по ней чат привяжется к доске. */
+  telegramLink: () => request<{ url: string }>("/api/telegram/link", json("POST")),
+  telegramUnlink: () => request<TelegramStatus>("/api/telegram/link", json("DELETE")),
 };

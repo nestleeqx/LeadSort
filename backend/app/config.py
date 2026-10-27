@@ -1,3 +1,4 @@
+import hashlib
 from functools import lru_cache
 from typing import Literal
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -85,6 +86,15 @@ class Settings(BaseSettings):
     queue_mode: Literal["inline", "poll"] | None = None
     worker_concurrency: int = 5
 
+    # Telegram-бот: токен от @BotFather. Пусто — бот выключен, доска работает без него.
+    # Локально бот опрашивает Telegram сам (сервис bot в Docker), на Vercel — вебхук,
+    # который ставится при первом обращении к /api/telegram
+    telegram_bot_token: str = ""
+    # Адрес сайта для ссылок в сообщениях бота. Пусто — первый адрес из CORS_ORIGINS
+    site_url: str = ""
+    # Vercel передаёт постоянный адрес проекта — по нему ставится вебхук
+    vercel_project_production_url: str = ""
+
     @field_validator("database_url")
     @classmethod
     def _normalize_db(cls, v: str) -> str:
@@ -99,6 +109,18 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def public_site_url(self) -> str:
+        url = self.site_url or next(iter(self.cors_origin_list), "http://localhost:3000")
+        return url.rstrip("/")
+
+    @property
+    def telegram_webhook_secret(self) -> str:
+        """Секрет вебхука выводится из токена: ещё одна переменная окружения не нужна."""
+        if not self.telegram_bot_token:
+            return ""
+        return hashlib.sha256(f"leadsort-webhook:{self.telegram_bot_token}".encode()).hexdigest()
 
 
 @lru_cache

@@ -78,8 +78,20 @@ MONTHS = [
 ]  # fmt: skip
 
 
-def triage_prompt(text: str, today: date | None = None) -> tuple[str, str]:
+# Откуда пришла заявка — если от этого зависит разбор. Из Telegram отвечают в тот же чат,
+# поэтому спрашивать «как с вами связаться» не нужно, даже если контактов в тексте нет
+CHANNEL_NOTES = {
+    "telegram": "Заявка пришла сообщением в Telegram: ответ уйдёт в этот же чат, способ связи "
+    "уже есть — не спрашивай, как связаться.",
+}
+
+
+def triage_prompt(
+    text: str, today: date | None = None, channel: str | None = None
+) -> tuple[str, str]:
     # Дата нужна, чтобы модель понимала «к весне» и «до пятницы» и не спрашивала, какой год
     today = today or datetime.now(MOSCOW).date()
     day = f"{today.day} {MONTHS[today.month - 1]} {today.year} г."
-    return SYSTEM, f"Сегодня {day}\n\nЗаявка:\n<<<\n{text}\n>>>"
+    note = CHANNEL_NOTES.get(channel or "")
+    head = f"Сегодня {day}" + (f"\n{note}" if note else "")
+    return SYSTEM, f"{head}\n\nЗаявка:\n<<<\n{text}\n>>>"

@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -87,6 +87,21 @@ class LeadEvent(Base):
     text: Mapped[str] = mapped_column(Text)
 
     lead: Mapped[Lead] = relationship(back_populates="events")
+
+
+class TelegramChat(Base):
+    """Чат Telegram, привязанный к доске посетителя: туда уходят срочные заявки,
+    а сообщения из него становятся заявками на этой доске."""
+
+    __tablename__ = "telegram_chats"
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    visitor_id: Mapped[str] = mapped_column(
+        ForeignKey("visitors.id", ondelete="CASCADE"), index=True
+    )
+    # Как показать чат на сайте: имя собеседника или название группы
+    title: Mapped[str] = mapped_column(String(128), default="")
+    linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class CrmRequest(Base):

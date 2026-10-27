@@ -88,6 +88,9 @@ export type Stats = {
 
 export type Board = { leads: Lead[] };
 
+/** Telegram-бот: enabled — настроен на сервере, chats — чаты, привязанные к доске. */
+export type TelegramStatus = { enabled: boolean; chats: string[] };
+
 export type Limits = {
   max_lead_chars: number;
   triages_per_hour: number;

@@ -3,7 +3,7 @@
 import { ArrowUpRight, BarChart3, Globe, KanbanSquare, Menu, Search, Send, Sparkles, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { plural } from "@/lib/labels";
@@ -11,6 +11,7 @@ import type { Board } from "@/lib/types";
 import { boardRefresh, isPending } from "../board/Board";
 import { Logo } from "../Logo";
 import { SearchProvider, useSearch } from "./search";
+import { TelegramDialog, useTelegram } from "./TelegramDialog";
 
 type Item = {
   href: string;
@@ -18,8 +19,9 @@ type Item = {
   icon: ReactNode;
   badge?: number;
   external?: boolean;
-  soon?: boolean;
 };
+
+const NAV_ITEM = "group flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors";
 
 /** Сводка доски для меню и плашки ИИ — тот же запрос, что у самой доски, SWR не дублирует его. */
 function useBoardSummary() {
@@ -36,24 +38,13 @@ function useBoardSummary() {
 function NavItem({ item, onNavigate }: { item: Item; onNavigate?: () => void }) {
   const pathname = usePathname();
   const active = !item.external && pathname === item.href;
-  const base = "group flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors";
-
-  if (item.soon) {
-    return (
-      <span className={`${base} cursor-default text-ink-3`} title="Подключим на следующем этапе">
-        <span className="text-ink-3">{item.icon}</span>
-        {item.label}
-        <span className="ml-auto rounded-md bg-sunken px-1.5 py-px text-[10px] font-medium">скоро</span>
-      </span>
-    );
-  }
 
   return (
     <Link
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      className={`${base} ${
+      className={`${NAV_ITEM} ${
         active ? "bg-accent-soft font-medium text-accent-ink" : "text-ink-2 hover:bg-sunken hover:text-ink"
       }`}
     >
@@ -73,17 +64,46 @@ function NavItem({ item, onNavigate }: { item: Item; onNavigate?: () => void }) 
   );
 }
 
-function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+/** Пункт бота: открывает окно привязки; метка показывает, подключён ли чат к доске. */
+function TelegramItem({ onOpen }: { onOpen: () => void }) {
+  const { data } = useTelegram();
+  const icon = <Send className="size-4" />;
+
+  if (data && !data.enabled) {
+    return (
+      <span className={`${NAV_ITEM} cursor-default text-ink-3`} title="Бот не настроен на сервере">
+        {icon}
+        Telegram-бот
+        <span className="ml-auto rounded-md bg-sunken px-1.5 py-px text-[10px] font-medium">выкл</span>
+      </span>
+    );
+  }
+  const linked = !!data?.chats.length;
+  return (
+    <button type="button" onClick={onOpen} className={`${NAV_ITEM} w-full text-ink-2 hover:bg-sunken hover:text-ink`}>
+      <span className="text-ink-3 group-hover:text-ink-2">{icon}</span>
+      Telegram-бот
+      {data && (
+        <span
+          className={`ml-auto rounded-md px-1.5 py-px text-[10px] font-semibold ${
+            linked ? "bg-success-soft text-success" : "bg-accent-soft text-accent-ink"
+          }`}
+        >
+          {linked ? "подключён" : "подключить"}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function Sidebar({ onNavigate, onTelegram }: { onNavigate?: () => void; onTelegram: () => void }) {
   const { newCount } = useBoardSummary();
   const work: Item[] = [
     { href: "/app", label: "Доска заявок", icon: <KanbanSquare className="size-4" />, badge: newCount },
     { href: "/app/stats", label: "Статистика", icon: <BarChart3 className="size-4" /> },
     { href: "/try", label: "Проверить разбор", icon: <Wand2 className="size-4" /> },
   ];
-  const channels: Item[] = [
-    { href: "/pixel", label: "Сайт студии", icon: <Globe className="size-4" />, external: true },
-    { href: "#", label: "Telegram-бот", icon: <Send className="size-4" />, soon: true },
-  ];
+  const site: Item = { href: "/pixel", label: "Сайт студии", icon: <Globe className="size-4" />, external: true };
 
   return (
     <div className="flex h-full flex-col">
@@ -104,9 +124,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div>
           <p className="mb-1.5 px-2.5 text-[11px] font-medium text-ink-3">Каналы заявок</p>
           <div className="space-y-0.5">
-            {channels.map((item) => (
-              <NavItem key={item.label} item={item} onNavigate={onNavigate} />
-            ))}
+            <NavItem item={site} onNavigate={onNavigate} />
+            <TelegramItem onOpen={onTelegram} />
           </div>
         </div>
       </nav>
@@ -226,6 +245,8 @@ function StudioBadge() {
 
 function Shell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [telegramOpen, setTelegramOpen] = useState(false);
+  const closeTelegram = useCallback(() => setTelegramOpen(false), []);
   const onBoard = usePathname() === "/app";
 
   useEffect(() => {
@@ -244,8 +265,9 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-full lg:pl-64">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-line bg-surface lg:block">
-        <Sidebar />
+        <Sidebar onTelegram={() => setTelegramOpen(true)} />
       </aside>
+      {telegramOpen && <TelegramDialog onClose={closeTelegram} />}
 
       {/* На телефоне и планшете меню выезжает справа по кнопке */}
       {menuOpen && (
@@ -263,7 +285,13 @@ function Shell({ children }: { children: ReactNode }) {
             >
               <X className="size-4.5" />
             </button>
-            <Sidebar onNavigate={() => setMenuOpen(false)} />
+            <Sidebar
+              onNavigate={() => setMenuOpen(false)}
+              onTelegram={() => {
+                setMenuOpen(false);
+                setTelegramOpen(true);
+              }}
+            />
           </aside>
         </div>
       )}
