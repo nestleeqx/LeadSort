@@ -531,7 +531,8 @@ export function LeadDrawer({
   const t = lead?.triage;
   const c = t?.contacts;
   const firstContact = c?.phones[0] ?? c?.emails[0] ?? c?.telegram[0];
-  const title = c?.name || firstContact || (lead ? "Заявка без имени" : "Заявка");
+  // «Без имени» — только когда разбор уже есть: до него имя просто ещё неизвестно
+  const title = c?.name || firstContact || (t ? "Заявка без имени" : "Заявка");
   const column = COLUMNS.find((col) => col.id === lead?.status);
 
   return (

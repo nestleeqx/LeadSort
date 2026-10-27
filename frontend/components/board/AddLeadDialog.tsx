@@ -40,9 +40,8 @@ export function AddLeadDialog({ onClose, onAdded }: { onClose: () => void; onAdd
     if (!trimmed || tooLong || saving) return;
     setSaving(true);
     try {
-      const lead = await api.addLead(trimmed);
-      toast.ok("Заявка добавлена — нейросеть её разбирает");
-      onAdded(lead);
+      // Уведомление не нужно: после добавления открывается карточка, разбор виден в ней
+      onAdded(await api.addLead(trimmed));
     } catch (e) {
       toast.error(e);
       setSaving(false);

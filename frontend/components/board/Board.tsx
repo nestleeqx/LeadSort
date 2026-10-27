@@ -21,7 +21,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { ChevronLeft, ChevronRight, Download, Plus, RotateCcw, SlidersHorizontal, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { CHANNELS, COLUMNS, TYPES, URGENCY, plural } from "@/lib/labels";
@@ -91,8 +101,20 @@ function useNow() {
   );
 }
 
-const noSubscribe = () => () => {};
-const readLeadParam = () => new URLSearchParams(window.location.search).get("lead");
+/** Параметры ссылки на доску: ?lead=… открывает заявку (кнопки в Telegram, «Открыть на доске»
+ *  на сайте студии), ?urgent=1 включает фильтр срочных (плашка ИИ в шапке).
+ *  Хук Next, а не window.location: при переходе внутри приложения страница рисуется раньше,
+ *  чем меняется адрес. Отдельный компонент — чтобы Suspense, который нужен хуку, не скрывал доску. */
+function UrlParams({ onLead, onUrgent }: { onLead: (id: string | null) => void; onUrgent: () => void }) {
+  const params = useSearchParams();
+  const lead = params.get("lead");
+  const urgent = params.has("urgent");
+  useEffect(() => onLead(lead), [lead, onLead]);
+  useEffect(() => {
+    if (urgent) onUrgent();
+  }, [urgent, onUrgent]);
+  return null;
+}
 
 /** Позиция между соседями: так переносится одна карточка, а не вся колонка. */
 function positionAt(ids: string[], index: number, byId: Map<string, Lead>) {
@@ -350,12 +372,23 @@ export function Board() {
     // Пока заявки разбираются — чаще, чтобы карточка обновилась сразу после разбора
     refreshInterval: boardRefresh,
   });
-  // Заявка из ссылки ?lead=… (кнопки в Telegram). Читаем адрес напрямую: запрос доски
-  // общий с боковым меню, и обработчик загрузки здесь может не вызваться
-  const linkedLead = useSyncExternalStore(noSubscribe, readLeadParam, () => null);
+  const [linkedLead, setLinkedLead] = useState<string | null>(null);
   const [linkUsed, setLinkUsed] = useState(false);
+  // Новая ссылка ?lead открывает карточку, даже если прошлую уже открывали и закрыли
+  const onLinkedLead = useCallback((id: string | null) => {
+    setLinkedLead(id);
+    setLinkUsed(false);
+  }, []);
 
   const [panelFilters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  // Плашка ИИ в шапке ведёт на ?urgent=1: показываем только срочные. Параметр сразу убираем,
+  // чтобы обновление страницы не включало фильтр снова, — снять его можно в «Фильтрах»
+  const onUrgentLink = useCallback(() => {
+    setFilters((f) => ({ ...f, urgency: ["high"] }));
+    const params = new URLSearchParams(window.location.search);
+    params.delete("urgent");
+    window.history.replaceState(null, "", window.location.pathname + (params.size ? `?${params}` : ""));
+  }, []);
   // Строка поиска — в верхней панели приложения, остальные фильтры — на доске
   const { q, setQ } = useSearch();
   const filters = useMemo(() => ({ ...panelFilters, q }), [panelFilters, q]);
@@ -685,6 +718,9 @@ export function Board() {
         </>
       )}
 
+      <Suspense fallback={null}>
+        <UrlParams onLead={onLinkedLead} onUrgent={onUrgentLink} />
+      </Suspense>
       {adding && (
         <AddLeadDialog
           onClose={() => setAdding(false)}
@@ -692,6 +728,8 @@ export function Board() {
             setAdding(false);
             pendingRef.current.add(lead.id);
             mutate({ leads: [lead, ...leads] }, { revalidate: true });
+            // Сразу карточка: в ней видно, как нейросеть разбирает заявку и что получилось
+            open(lead.id);
           }}
         />
       )}

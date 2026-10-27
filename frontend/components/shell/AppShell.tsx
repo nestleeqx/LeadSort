@@ -149,22 +149,23 @@ function Sidebar({ onNavigate, onTelegram }: { onNavigate?: () => void; onTelegr
   );
 }
 
-/** Тёмная плашка статуса: что сейчас делает нейросеть и сколько срочных ждут ответа. */
+/** Тёмная плашка статуса: что сейчас делает нейросеть и сколько срочных ждут ответа.
+ *  Клик открывает доску со срочными. На телефоне плашки нет: в узкой шапке от неё оставался
+ *  только непонятный значок, а срочные и так видны в заголовке доски. */
 function AiStatus() {
   const { loaded, pending, urgent } = useBoardSummary();
   return (
     <Link
-      href="/app"
-      className="flex items-center gap-2.5 rounded-full bg-ink py-1.5 pr-3.5 pl-1.5 text-white shadow-[0_8px_20px_-10px_rgba(21,23,28,.6)] transition-colors hover:bg-ink/90"
-      title="Состояние разбора заявок"
+      href={urgent ? "/app?urgent=1" : "/app"}
+      className="group flex items-center gap-2.5 rounded-full bg-ink py-1.5 pr-3.5 pl-1.5 text-white shadow-[0_8px_20px_-10px_rgba(21,23,28,.6)] transition-colors hover:bg-ink/90 max-sm:hidden"
+      title={urgent ? "Показать срочные заявки" : "Состояние разбора заявок"}
     >
       <span className="grid size-7 place-items-center rounded-full bg-white/10">
         <Sparkles className={`size-3.5 ${pending ? "animate-pulse text-glow" : "text-white"}`} />
       </span>
       <span className="leading-tight">
         <span className="flex items-center gap-1.5 text-[13px] font-medium whitespace-nowrap">
-          {/* На самых узких экранах — только значок и статус, иначе подпись переносится */}
-          <span className="max-[379px]:hidden">ИИ-разбор</span>
+          ИИ-разбор
           <span
             className={`rounded-md px-1.5 py-px text-[10px] font-semibold ${
               pending ? "bg-glow text-accent-ink" : "bg-success/90 text-white"
@@ -173,9 +174,11 @@ function AiStatus() {
             {!loaded ? "…" : pending ? `${pending} в работе` : "готов"}
           </span>
         </span>
-        <span className="block text-[11px] text-white/60 max-sm:hidden">
+        <span
+          className={`block text-[11px] whitespace-nowrap text-white/60 ${urgent ? "group-hover:text-white" : ""}`}
+        >
           {loaded && urgent
-            ? `${urgent} ${plural(urgent, ["срочная ждёт", "срочные ждут", "срочных ждут"])} ответа`
+            ? `${urgent} ${plural(urgent, ["срочная ждёт", "срочные ждут", "срочных ждут"])} ответа →`
             : "срочных нет"}
         </span>
       </span>
