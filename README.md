@@ -140,7 +140,6 @@ flowchart LR
 | Данные | PostgreSQL 16 (в демо — Neon), Redis (в демо — Upstash) |
 | Нейросеть | OpenAI API (gpt-5.6-luna), YandexGPT, шаблонный разбор без ключей |
 | Telegram | Bot API: вебхук на Vercel, опрос в Docker |
-| Тесты | pytest, fakeredis, SQLite в тестах |
 
 Приём заявок и маршрутизацию можно собрать и в n8n, оставив FastAPI только для разбора нейросетью: эндпоинт `POST /api/triage` принимает текст и возвращает разбор.
 
@@ -186,17 +185,6 @@ OPENAI_REASONING_EFFORT=none
 | backend | `TELEGRAM_BOT_TOKEN` | токен бота от @BotFather; вебхук поставится сам |
 | backend | `DATABASE_URL…`, `REDIS_URL` / `KV_URL` | подставляют Neon и Upstash |
 | frontend | `NEXT_PUBLIC_API_URL` | адрес бэкенда, `https://….vercel.app` |
-
-### Тесты
-
-```bash
-cd backend
-uv sync
-uv run pytest
-uv run ruff check app tests
-```
-
-133 теста: разбор и поиск контактов, доска и очередь, статистика, экспорт, CRM и Telegram-бот (с подменённым Telegram API).
 
 ---
 
