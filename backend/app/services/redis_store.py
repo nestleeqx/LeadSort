@@ -30,13 +30,19 @@ def set_redis(client: Redis) -> None:
 
 
 async def cached_complete[T: BaseModel](
-    redis: Redis, provider: LLMProvider, system: str, user: str, schema: type[T]
+    redis: Redis,
+    provider: LLMProvider,
+    system: str,
+    user: str,
+    schema: type[T],
+    fresh: bool = False,
 ) -> T:
+    """fresh — спросить модель заново, даже если ответ есть в кеше; новый ответ заменит старый."""
     digest = hashlib.sha256(
         "\x00".join([provider.name, provider.model, schema.__name__, system, user]).encode()
     ).hexdigest()
     key = f"{PREFIX}llm:{digest}"
-    hit = await redis.get(key)
+    hit = None if fresh else await redis.get(key)
     if hit:
         return schema.model_validate_json(hit)
     result = await provider.complete_json(system, user, schema)

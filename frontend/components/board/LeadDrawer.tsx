@@ -6,12 +6,14 @@ import {
   Bell,
   BellOff,
   Check,
+  ChevronDown,
   Copy,
   Loader2,
   Mail,
   Phone,
   Plus,
   RefreshCw,
+  Sparkles,
   TriangleAlert,
   Undo2,
   User,
@@ -20,18 +22,15 @@ import {
 import { useEffect, useId, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
-import { CHANNELS, COLUMNS, FIELDS, TYPES, URGENCY, formatDateTime, formatSeconds } from "@/lib/labels";
+import { CHANNELS, COLUMNS, FIELDS, NOT_SPECIFIED, TYPES, URGENCY, formatDateTime, formatSeconds } from "@/lib/labels";
 import { maskPhone, maskTelegram } from "@/lib/phone";
 import type { Column, Lead, LeadDetail, LeadType, Triage, TriageField, Urgency } from "@/lib/types";
 import { useConfirm } from "../Confirm";
 import { CrmPanel } from "./CrmPanel";
+import { CHANNEL_ICONS } from "./LeadCard";
 import { HighlightedText, HighlightLegend } from "../HighlightedText";
 import { useToast } from "../Toast";
 import { Button, Panel, SectionLabel } from "../ui";
-
-// Функция опроса — вне компонента: новая функция на каждой отрисовке перезапускает таймер SWR
-const leadRefresh = (latest?: LeadDetail) =>
-  latest && (latest.state === "queued" || latest.state === "running") ? 2000 : 0;
 
 type Draft = {
   type: LeadType;
@@ -101,7 +100,7 @@ function toPatch(t: Triage, d: Draft): Partial<Omit<Triage, "notify">> {
 }
 
 const INPUT =
-  "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-line-strong";
+  "w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none transition-shadow placeholder:text-ink-3 focus:border-accent/40 focus:ring-4 focus:ring-accent-soft";
 // Текстовые поля не растягиваются вручную — высота сама подстраивается под текст
 const AREA = `${INPUT} resize-none field-sizing-content leading-relaxed`;
 
@@ -182,7 +181,9 @@ function Field({
       <div className="mb-1.5 flex items-center gap-2">
         <SectionLabel className="">{label}</SectionLabel>
         {edited && (
-          <span className="rounded bg-info-soft px-1.5 py-px text-[10px] font-medium text-info">изменено</span>
+          <span className="rounded-md bg-accent-soft px-1.5 py-px text-[10px] font-semibold text-accent-ink">
+            изменено
+          </span>
         )}
         {hint && <span className="ml-auto text-[11px] text-ink-3">{hint}</span>}
       </div>
@@ -208,7 +209,7 @@ function Segmented<T extends string>({
           type="button"
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+          className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors ${
             value === o.value
               ? "border-ink bg-ink text-white"
               : "border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink"
@@ -273,7 +274,7 @@ function TriageForm({
   const notify = draft.urgency === "high" && draft.type !== "spam";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <Field label={FIELDS.type} edited={edited("type")}>
         <Segmented
           value={draft.type}
@@ -297,9 +298,13 @@ function TriageForm({
           }))}
         />
         <input {...text("urgency_reason")} placeholder="Почему такая срочность" className={`${INPUT} mt-2`} />
-        <p className={`mt-2 inline-flex items-center gap-1.5 text-xs ${notify ? "text-ink" : "text-ink-3"}`}>
-          {notify ? <Bell className="size-3.5 text-danger" /> : <BellOff className="size-3.5" />}
-          {notify ? "Срочная: менеджер получает уведомление в Telegram" : "Без уведомления в Telegram"}
+        <p
+          className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium ${
+            notify ? "bg-danger-soft text-danger" : "bg-sunken text-ink-3"
+          }`}
+        >
+          {notify ? <Bell className="size-3.5" /> : <BellOff className="size-3.5" />}
+          {notify ? "Срочная — менеджер получает уведомление в Telegram" : "Без уведомления в Telegram"}
         </p>
       </Field>
 
@@ -356,34 +361,80 @@ function TriageForm({
       </Field>
 
       <Field label={FIELDS.reply_draft} edited={edited("reply_draft")}>
-        <textarea {...text("reply_draft")} rows={8} className={`${AREA} min-h-40`} />
-        {draft.reply_draft && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="mt-1.5"
-            icon={copied ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
-            onClick={copy}
-          >
-            Скопировать ответ
-          </Button>
-        )}
+        <div className="relative">
+          <textarea {...text("reply_draft")} rows={8} className={`${AREA} min-h-40 bg-sunken/50 pb-12`} />
+          {draft.reply_draft && (
+            <Button
+              size="sm"
+              className="absolute right-2.5 bottom-2.5 rounded-lg"
+              icon={copied ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
+              onClick={copy}
+            >
+              Скопировать
+            </Button>
+          )}
+        </div>
       </Field>
 
-      {/* Сохранение прилипает к низу панели, когда есть несохранённые правки */}
-      <div
-        className={`sticky bottom-0 -mx-4 flex items-center gap-2 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-5 sm:px-5 ${
-          dirty ? "" : "hidden"
-        }`}
-      >
-        <span className="mr-auto text-xs text-ink-3">Есть несохранённые правки</span>
-        <Button onClick={() => setDraft(toDraft(triage))} disabled={saving}>
-          Отменить
-        </Button>
-        <Button variant="primary" loading={saving} onClick={save}>
-          Сохранить
-        </Button>
-      </div>
+      {/* Несохранённые правки — плавающая панель у нижнего края, как плашка в дашбордах */}
+      {dirty && (
+        // В узкой панели кнопки уходят на вторую строку, подпись и точка не сжимаются
+        <div className="pop sticky bottom-3 z-10 flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-line bg-surface/95 p-2 pl-4 shadow-[0_18px_40px_-16px_rgba(21,23,28,.35)] backdrop-blur">
+          <span className="mr-auto flex items-center gap-2 py-1 text-sm whitespace-nowrap text-ink-2">
+            <span className="size-2 shrink-0 rounded-full bg-accent" />
+            Есть несохранённые правки
+          </span>
+          <Button variant="ghost" onClick={() => setDraft(toDraft(triage))} disabled={saving}>
+            Отменить
+          </Button>
+          <Button variant="primary" loading={saving} onClick={save} className="rounded-xl">
+            Сохранить
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Главное о заявке четырьмя плитками — то, что менеджер смотрит первым. */
+function KeyFacts({ triage: t }: { triage: Triage }) {
+  const tiles: { label: string; value: ReactNode }[] = [
+    {
+      label: "Тип",
+      value: (
+        <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${TYPES[t.type].badge}`}>
+          {TYPES[t.type].label}
+        </span>
+      ),
+    },
+    {
+      label: "Срочность",
+      value: (
+        <span className={`inline-flex items-center gap-1.5 ${URGENCY[t.urgency].text}`}>
+          <span className={`size-2 rounded-full ${URGENCY[t.urgency].dot}`} />
+          {URGENCY[t.urgency].short}
+          {t.notify && <Bell className="size-3.5" />}
+        </span>
+      ),
+    },
+    { label: "Бюджет", value: t.budget },
+    { label: "Сроки", value: t.deadline },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+      {tiles.map((tile) => (
+        <div key={tile.label} className="min-w-0 rounded-2xl border border-line bg-surface px-4 py-3">
+          <p className="text-[11px] font-medium text-ink-3">{tile.label}</p>
+          <div
+            className={`mt-1 truncate text-sm font-semibold ${
+              tile.value === NOT_SPECIFIED ? "font-normal text-ink-3" : "text-ink"
+            }`}
+            title={typeof tile.value === "string" ? tile.value : undefined}
+          >
+            {tile.value}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -409,10 +460,17 @@ export function LeadDrawer({
     mutate,
   } = useSWR<LeadDetail>(["lead", id], () => api.lead(id), {
     fallbackData: initial ? { ...initial, events: [], crm_requests: [] } : undefined,
-    refreshInterval: leadRefresh,
   });
   const [busy, setBusy] = useState(false);
   const pending = lead?.state === "queued" || lead?.state === "running";
+
+  // Опрос, пока идёт разбор. Не refreshInterval: SWR, получив однажды 0, больше не заводит таймер,
+  // и после «Разобрать заново» карточка висела на «разбирает», пока доска уже показывала результат
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setInterval(() => void mutate(), 2000);
+    return () => clearInterval(timer);
+  }, [pending, mutate]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -471,6 +529,10 @@ export function LeadDrawer({
   }
 
   const t = lead?.triage;
+  const c = t?.contacts;
+  const firstContact = c?.phones[0] ?? c?.emails[0] ?? c?.telegram[0];
+  const title = c?.name || firstContact || (lead ? "Заявка без имени" : "Заявка");
+  const column = COLUMNS.find((col) => col.id === lead?.status);
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -479,27 +541,35 @@ export function LeadDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="slide-from-right relative flex h-full w-full max-w-5xl flex-col bg-canvas shadow-[-30px_0_60px_-30px_rgba(20,20,20,.35)]"
+        className="slide-from-right relative flex h-full w-full max-w-5xl flex-col bg-canvas shadow-[-30px_0_60px_-30px_rgba(21,23,28,.35)] sm:rounded-l-3xl sm:overflow-hidden"
       >
-        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-5">
+        <header className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b border-line bg-surface px-4 py-3.5 sm:px-6">
+          {lead && (
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(21,23,28,.05)]">
+              {CHANNEL_ICONS[lead.channel]}
+            </span>
+          )}
           <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="truncate font-semibold text-ink">
-              {t?.contacts.name || (lead ? "Заявка без имени" : "Заявка")}
+            <h2 id={titleId} className="truncate text-base font-semibold text-ink">
+              {title}
             </h2>
             {lead && (
-              <p className="truncate text-xs text-ink-3">
-                {CHANNELS[lead.channel]} · {formatDateTime(lead.created_at)}
+              // Дата не обрезается: если места мало, она уходит на вторую строку целиком
+              <p className="flex flex-wrap gap-x-1.5 text-xs text-ink-3">
+                <span>{CHANNELS[lead.channel]}</span>
+                <span className="whitespace-nowrap">· {formatDateTime(lead.created_at)}</span>
               </p>
             )}
           </div>
           {lead && (
-            <label className="flex items-center gap-2 text-xs text-ink-3 max-sm:order-last max-sm:w-full">
-              <span className="sm:hidden">Колонка</span>
+            <label className="relative flex items-center max-sm:order-last max-sm:w-full">
+              <span className="sr-only">Колонка</span>
+              <span className={`pointer-events-none absolute left-3.5 size-2 rounded-full ${column?.dot ?? ""}`} />
               <select
                 value={lead.status}
                 disabled={busy}
                 onChange={(e) => move(e.target.value as Column)}
-                className="h-8 rounded-lg border border-line bg-surface px-2 text-sm text-ink outline-none focus:border-line-strong max-sm:flex-1"
+                className="h-10 appearance-none rounded-full border border-line bg-surface pr-9 pl-8 text-sm font-medium text-ink outline-none hover:border-line-strong focus:ring-4 focus:ring-accent-soft max-sm:flex-1"
               >
                 {COLUMNS.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -507,13 +577,14 @@ export function LeadDrawer({
                   </option>
                 ))}
               </select>
+              <ChevronDown className="pointer-events-none absolute right-3 size-4 text-ink-3" />
             </label>
           )}
           <button
             type="button"
             onClick={onClose}
             aria-label="Закрыть"
-            className="grid size-8 place-items-center rounded-lg text-ink-2 hover:bg-sunken hover:text-ink"
+            className="grid size-10 place-items-center rounded-full border border-line text-ink-2 hover:bg-sunken hover:text-ink"
           >
             <X className="size-4.5" />
           </button>
@@ -523,95 +594,114 @@ export function LeadDrawer({
           {error && !lead ? (
             <p className="p-6 text-sm text-ink-2">{error.message}</p>
           ) : !lead ? (
-            <div className="space-y-3 p-5">
-              <div className="skeleton h-40 rounded-xl" />
-              <div className="skeleton h-64 rounded-xl" />
+            <div className="space-y-3 p-4 sm:p-6">
+              <div className="skeleton h-20 rounded-2xl" />
+              <div className="skeleton h-64 rounded-2xl" />
             </div>
           ) : (
-            <div className="grid items-start gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-              <div className="space-y-4">
-                {lead.status === "spam" && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
-                    <AlertCircle className="size-4 shrink-0" />
-                    <span className="mr-auto">Заявка в спаме</span>
-                    <Button size="sm" icon={<Undo2 className="size-3.5" />} disabled={busy} onClick={() => move("new")}>
-                      Не спам — вернуть
-                    </Button>
-                  </div>
-                )}
-                <Panel className="p-4">
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                    <SectionLabel className="">Исходный текст</SectionLabel>
-                    <HighlightLegend />
-                  </div>
-                  <HighlightedText text={lead.text} highlights={lead.highlights} />
-                </Panel>
-                {lead.notes.length > 0 && (
-                  <div className="rounded-xl bg-warn-soft px-4 py-3">
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-warn">
-                      <TriangleAlert className="size-3.5" />
-                      Поправили за нейросетью
-                    </p>
-                    <ul className="space-y-0.5 text-sm text-ink-2">
-                      {lead.notes.map((n) => (
-                        <li key={n}>{n}</li>
+            <div className="space-y-4 p-4 sm:p-6">
+              {t && !pending && <KeyFacts triage={t} />}
+              {/* Колонки не шире экрана: иначе длинная строка журнала или панель правок растягивает их вбок */}
+              <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                <div className="space-y-4">
+                  {lead.status === "spam" && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
+                      <AlertCircle className="size-4 shrink-0" />
+                      <span className="mr-auto">Заявка в спаме</span>
+                      <Button
+                        size="sm"
+                        icon={<Undo2 className="size-3.5" />}
+                        disabled={busy}
+                        onClick={() => move("new")}
+                      >
+                        Не спам — вернуть
+                      </Button>
+                    </div>
+                  )}
+                  <Panel className="rounded-2xl p-4 sm:p-5">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      <h3 className="text-sm font-semibold text-ink">Исходный текст</h3>
+                      <HighlightLegend />
+                    </div>
+                    <HighlightedText text={lead.text} highlights={lead.highlights} />
+                  </Panel>
+                  {lead.notes.length > 0 && (
+                    <div className="rounded-2xl border border-warn/20 bg-warn-soft px-4 py-3">
+                      <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-warn">
+                        <TriangleAlert className="size-3.5" />
+                        Поправили за нейросетью
+                      </p>
+                      <ul className="space-y-0.5 text-sm text-ink-2">
+                        {lead.notes.map((n) => (
+                          <li key={n}>{n}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <CrmPanel lead={lead} onSent={update} />
+                  <Panel className="rounded-2xl p-4 sm:p-5">
+                    <h3 className="text-sm font-semibold text-ink">История</h3>
+                    {/* Лента событий: точки на общей вертикальной линии */}
+                    <ol className="relative mt-3 space-y-3 before:absolute before:top-1.5 before:bottom-1.5 before:left-[3px] before:w-px before:bg-line">
+                      {lead.events.map((e, i) => (
+                        <li key={i} className="relative flex gap-3 pl-5 text-sm">
+                          <span
+                            className={`absolute top-1.5 left-0 size-[7px] rounded-full ring-2 ring-surface ${
+                              i === lead.events.length - 1 ? "bg-accent" : "bg-line-strong"
+                            }`}
+                          />
+                          <span className="min-w-0 flex-1 text-ink-2">{e.text}</span>
+                          <span className="shrink-0 text-xs text-ink-3 tabular-nums">{formatDateTime(e.at)}</span>
+                        </li>
                       ))}
-                    </ul>
+                    </ol>
+                  </Panel>
+                </div>
+
+                <Panel className="rounded-2xl p-4 sm:p-6">
+                  <div className="mb-5 flex flex-wrap items-center gap-2">
+                    <h3 className="mr-auto flex items-center gap-2 text-sm font-semibold text-ink">
+                      <span className="grid size-7 place-items-center rounded-lg bg-accent-soft text-accent">
+                        <Sparkles className="size-3.5" />
+                      </span>
+                      Разбор
+                    </h3>
+                    {lead.state === "done" && lead.method && (
+                      <span className="text-xs text-ink-3">
+                        {lead.method === "rules"
+                          ? "по правилам"
+                          : (lead.elapsed_ms ?? 0) < 300
+                            ? "мгновенно, из кеша"
+                            : `нейросеть, ${formatSeconds(lead.elapsed_ms ?? 0)}`}
+                      </span>
+                    )}
+                    {!pending && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<RefreshCw className="size-3.5" />}
+                        disabled={busy}
+                        onClick={retriage}
+                      >
+                        Разобрать заново
+                      </Button>
+                    )}
                   </div>
-                )}
-                <CrmPanel lead={lead} onSent={update} />
-                <Panel className="p-4">
-                  <SectionLabel>История</SectionLabel>
-                  <ol className="mt-2 space-y-2.5">
-                    {lead.events.map((e, i) => (
-                      <li key={i} className="flex gap-3 text-sm">
-                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-line-strong" />
-                        <span className="min-w-0 flex-1 text-ink-2">{e.text}</span>
-                        <span className="shrink-0 text-xs text-ink-3 tabular-nums">{formatDateTime(e.at)}</span>
-                      </li>
-                    ))}
-                  </ol>
+                  {pending ? (
+                    <div className="flex flex-col items-center gap-3 py-12 text-center">
+                      <Loader2 className="size-6 animate-spin text-accent" />
+                      <p className="text-sm text-ink-2">Нейросеть разбирает заявку…</p>
+                    </div>
+                  ) : lead.state === "error" || !t ? (
+                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                      <AlertCircle className="size-6 text-danger" />
+                      <p className="max-w-xs text-sm text-ink-2">{lead.error ?? "Не удалось разобрать заявку."}</p>
+                    </div>
+                  ) : (
+                    <TriageForm key={JSON.stringify(t)} lead={lead} triage={t} onSaved={update} />
+                  )}
                 </Panel>
               </div>
-
-              <Panel className="p-4 sm:p-5">
-                <div className="mb-4 flex items-center gap-2">
-                  <p className="mr-auto text-sm font-semibold text-ink">Разбор</p>
-                  {lead.state === "done" && lead.method && (
-                    <span className="text-xs text-ink-3">
-                      {lead.method === "rules"
-                        ? "по правилам"
-                        : (lead.elapsed_ms ?? 0) < 300
-                          ? "мгновенно, из кеша"
-                          : `нейросеть, ${formatSeconds(lead.elapsed_ms ?? 0)}`}
-                    </span>
-                  )}
-                  {!pending && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={<RefreshCw className="size-3.5" />}
-                      disabled={busy}
-                      onClick={retriage}
-                    >
-                      Разобрать заново
-                    </Button>
-                  )}
-                </div>
-                {pending ? (
-                  <div className="flex flex-col items-center gap-3 py-12 text-center">
-                    <Loader2 className="size-6 animate-spin text-info" />
-                    <p className="text-sm text-ink-2">Нейросеть разбирает заявку…</p>
-                  </div>
-                ) : lead.state === "error" || !t ? (
-                  <div className="flex flex-col items-center gap-3 py-10 text-center">
-                    <AlertCircle className="size-6 text-danger" />
-                    <p className="max-w-xs text-sm text-ink-2">{lead.error ?? "Не удалось разобрать заявку."}</p>
-                  </div>
-                ) : (
-                  <TriageForm key={JSON.stringify(t)} lead={lead} triage={t} onSaved={update} />
-                )}
-              </Panel>
             </div>
           )}
         </div>

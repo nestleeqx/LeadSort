@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/labels";
 import type { Crm, CrmRequest, LeadDetail } from "@/lib/types";
 import { useToast } from "../Toast";
-import { Button, Panel, SectionLabel } from "../ui";
+import { Button, Panel } from "../ui";
 
 const CRM_NAMES: Record<Crm, string> = { amocrm: "amoCRM", bitrix24: "Битрикс24" };
 
@@ -21,7 +21,7 @@ function Entry({ entry }: { entry: CrmRequest }) {
   const [open, setOpen] = useState(false);
   const id = dealId(entry);
   return (
-    <li className="rounded-lg border border-line">
+    <li className="overflow-hidden rounded-xl border border-line">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -29,12 +29,12 @@ function Entry({ entry }: { entry: CrmRequest }) {
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sunken/60"
       >
         <ChevronRight className={`size-4 shrink-0 text-ink-3 transition-transform ${open ? "rotate-90" : ""}`} />
-        <span className="font-medium text-ink">{CRM_NAMES[entry.crm]}</span>
+        <span className="shrink-0 font-medium text-ink">{CRM_NAMES[entry.crm]}</span>
         <span className="min-w-0 flex-1 truncate text-xs text-ink-3">
           ответ {entry.response.status}
           {id && `, сделка № ${id}`}
         </span>
-        <span className="shrink-0 text-xs text-ink-3 tabular-nums">{formatDateTime(entry.at)}</span>
+        <span className="shrink-0 text-xs whitespace-nowrap text-ink-3 tabular-nums">{formatDateTime(entry.at)}</span>
       </button>
       {open && (
         <div className="border-t border-line px-3 py-2.5">
@@ -71,9 +71,9 @@ export function CrmPanel({ lead, onSent }: { lead: LeadDetail; onSent: (lead: Le
   const ready = lead.state === "done" && lead.triage;
 
   return (
-    <Panel className="p-4">
-      <SectionLabel>Передать в CRM</SectionLabel>
-      <p className="text-xs leading-relaxed text-ink-3">
+    <Panel className="rounded-2xl p-4 sm:p-5">
+      <h3 className="text-sm font-semibold text-ink">Передать в CRM</h3>
+      <p className="mt-1 text-xs leading-relaxed text-ink-3">
         Демо-режим: запрос не отправляется, а сохраняется в журнал — видно, какие поля ушли бы в CRM.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

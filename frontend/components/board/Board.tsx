@@ -20,14 +20,15 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronLeft, ChevronRight, Download, Plus, RotateCcw, Search, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { ChevronLeft, ChevronRight, Download, Plus, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { CHANNELS, COLUMNS, TYPES, URGENCY, plural } from "@/lib/labels";
 import { PAGE } from "@/lib/layout";
 import type { Board as BoardData, Channel, Column, Lead, LeadType, Urgency } from "@/lib/types";
 import { useConfirm } from "../Confirm";
+import { useSearch } from "../shell/search";
 import { useToast } from "../Toast";
 import { Button } from "../ui";
 import { AddLeadDialog } from "./AddLeadDialog";
@@ -43,7 +44,7 @@ const COLUMN_IDS = COLUMNS.map((c) => c.id);
 export const isPending = (lead: Lead) => lead.state === "queued" || lead.state === "running";
 
 // Функция опроса — вне компонента: новая функция на каждой отрисовке перезапускает таймер SWR
-const boardRefresh = (latest?: BoardData) => (latest?.leads.some(isPending) ? 2000 : 15000);
+export const boardRefresh = (latest?: BoardData) => (latest?.leads.some(isPending) ? 2000 : 15000);
 
 function matches(lead: Lead, f: Filters) {
   const t = lead.triage;
@@ -90,6 +91,9 @@ function useNow() {
   );
 }
 
+const noSubscribe = () => () => {};
+const readLeadParam = () => new URLSearchParams(window.location.search).get("lead");
+
 /** Позиция между соседями: так переносится одна карточка, а не вся колонка. */
 function positionAt(ids: string[], index: number, byId: Map<string, Lead>) {
   const prev = ids[index - 1] ? byId.get(ids[index - 1])?.position : undefined;
@@ -100,30 +104,137 @@ function positionAt(ids: string[], index: number, byId: Map<string, Lead>) {
   return 0;
 }
 
-function Chip<T extends string>({
-  value,
+const TYPE_ORDER: LeadType[] = ["new_site", "improvement", "support", "question", "spam"];
+
+/** Таблетка типа со счётчиком — как «All 11 · Emails 3» в референсе. Активная — тёмная. */
+function TypePill({
+  label,
+  count,
+  countClass,
   active,
-  onToggle,
-  children,
+  onClick,
 }: {
-  value: T;
+  label: string;
+  count: number;
+  countClass: string;
   active: boolean;
-  onToggle: (value: T) => void;
-  children: React.ReactNode;
+  onClick: () => void;
 }) {
   return (
     <button
       type="button"
       aria-pressed={active}
-      onClick={() => onToggle(value)}
-      className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs whitespace-nowrap transition-colors ${
+      onClick={onClick}
+      className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full border pr-1.5 pl-3.5 text-sm font-medium whitespace-nowrap transition-colors ${
         active
           ? "border-ink bg-ink text-white"
           : "border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink"
       }`}
     >
+      {label}
+      <span
+        className={`min-w-6 rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums ${
+          active ? "bg-success text-white" : countClass
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap transition-colors ${
+        active
+          ? "border-accent bg-accent-soft text-accent-ink"
+          : "border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink"
+      }`}
+    >
       {children}
     </button>
+  );
+}
+
+/** Срочность и канал — во всплывающей панели, чтобы строка фильтров не разрасталась. */
+function MoreFilters({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = filters.urgency.length + filters.channels.length;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors ${
+          active
+            ? "border-accent/40 bg-accent-soft text-accent-ink"
+            : "border-line bg-surface text-ink-2 hover:text-ink"
+        }`}
+      >
+        <SlidersHorizontal className="size-4" />
+        Фильтры
+        {active > 0 && (
+          <span className="min-w-5 rounded-full bg-accent px-1.5 text-[11px] font-semibold text-white">{active}</span>
+        )}
+      </button>
+      {open && (
+        <div className="pop absolute right-0 z-30 mt-2 w-72 rounded-2xl border border-line bg-surface p-4 shadow-[0_24px_48px_-20px_rgba(21,23,28,.35)] max-sm:left-0 max-sm:right-auto">
+          <p className="mb-2 text-xs font-medium text-ink-3">Срочность</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(URGENCY) as Urgency[]).map((u) => (
+              <FilterChip
+                key={u}
+                active={filters.urgency.includes(u)}
+                onClick={() => onChange({ ...filters, urgency: toggle(filters.urgency, u) })}
+              >
+                <span className={`size-1.5 rounded-full ${URGENCY[u].dot}`} />
+                {URGENCY[u].short}
+              </FilterChip>
+            ))}
+          </div>
+          <p className="mt-4 mb-2 text-xs font-medium text-ink-3">Канал</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(CHANNELS) as Channel[]).map((c) => (
+              <FilterChip
+                key={c}
+                active={filters.channels.includes(c)}
+                onClick={() => onChange({ ...filters, channels: toggle(filters.channels, c) })}
+              >
+                {CHANNELS[c]}
+              </FilterChip>
+            ))}
+          </div>
+          {active > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange({ ...filters, urgency: [], channels: [] })}
+              className="mt-4 text-xs font-medium text-accent hover:underline"
+            >
+              Сбросить срочность и канал
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -141,6 +252,7 @@ function ColumnView({
   total,
   filtered,
   highlighted,
+  mobileActive,
   collapsed,
   onToggleCollapsed,
 }: {
@@ -154,12 +266,15 @@ function ColumnView({
   filtered: boolean;
   /** Сюда сейчас перетаскивают карточку из другой колонки */
   highlighted: boolean;
+  /** На телефоне видна только колонка, выбранная во вкладках */
+  mobileActive: boolean;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
 }) {
   const { setNodeRef, isOver: overColumn } = useDroppable({ id: column.id });
   const isOver = overColumn || highlighted;
 
+  // Свёрнутый спам — узкая полоса на широком экране; на телефоне колонки и так по одной
   if (collapsed) {
     return (
       <button
@@ -167,8 +282,8 @@ function ColumnView({
         type="button"
         onClick={onToggleCollapsed}
         title="Показать спам"
-        className={`flex w-11 shrink-0 snap-start flex-col items-center gap-3 rounded-xl border border-dashed py-3 text-xs transition-colors ${
-          isOver ? "border-danger bg-danger-soft" : "border-line-strong bg-sunken/50 text-ink-2 hover:bg-sunken"
+        className={`hidden w-12 shrink-0 flex-col items-center gap-3 self-stretch rounded-2xl border border-dashed py-4 text-xs transition-colors md:flex ${
+          isOver ? "border-danger bg-danger-soft" : "border-line-strong bg-surface/60 text-ink-2 hover:bg-surface"
         }`}
       >
         <ChevronLeft className="size-4 text-ink-3" />
@@ -181,29 +296,35 @@ function ColumnView({
   }
 
   return (
-    <section className="flex w-[82vw] max-w-80 shrink-0 snap-start flex-col sm:w-72" aria-label={column.label}>
-      <header className="mb-2 flex h-7 items-center gap-2 px-1">
+    <section
+      className={`w-full shrink-0 flex-col rounded-2xl p-2 transition-colors md:w-[300px] ${
+        mobileActive ? "flex" : "hidden md:flex"
+      } ${
+        // Обводка внутри колонки: снаружи её верх срезает контейнер с горизонтальной прокруткой
+        isOver ? "bg-accent-soft ring-2 ring-accent/30 ring-inset" : column.id === "spam" ? "bg-danger-soft/40" : "bg-sunken/80"
+      }`}
+      aria-label={column.label}
+    >
+      {/* На телефоне название и счётчик уже на вкладке — заголовок колонки не повторяем */}
+      <header className="hidden h-9 items-center gap-2 px-2 md:flex">
         <span className={`size-2 rounded-full ${column.dot}`} />
         <h2 className="text-sm font-semibold text-ink">{column.label}</h2>
-        <span className="text-xs text-ink-3 tabular-nums">{filtered ? `${ids.length} из ${total}` : ids.length}</span>
+        <span className="rounded-md bg-surface px-1.5 py-px text-[11px] font-semibold text-ink-2 tabular-nums shadow-[0_1px_2px_rgba(21,23,28,.06)]">
+          {filtered ? `${ids.length} из ${total}` : ids.length}
+        </span>
         {onToggleCollapsed && (
           <button
             type="button"
             onClick={onToggleCollapsed}
             title="Свернуть"
-            className="ml-auto grid size-7 place-items-center rounded-md text-ink-3 hover:bg-sunken hover:text-ink"
+            className="ml-auto hidden size-7 place-items-center rounded-md text-ink-3 hover:bg-surface hover:text-ink md:grid"
           >
             <ChevronRight className="size-4" />
           </button>
         )}
       </header>
       <SortableContext id={column.id} items={ids} strategy={verticalListSortingStrategy}>
-        <div
-          ref={setNodeRef}
-          className={`flex min-h-28 flex-1 flex-col gap-2 rounded-xl p-2 transition-colors ${
-            isOver ? "bg-accent-soft" : column.id === "spam" ? "bg-danger-soft/50" : "bg-sunken/70"
-          }`}
-        >
+        <div ref={setNodeRef} className="flex min-h-32 flex-1 flex-col gap-2 md:pt-1">
           {ids.map((id) => {
             const lead = byId.get(id);
             return lead ? (
@@ -211,7 +332,7 @@ function ColumnView({
             ) : null;
           })}
           {ids.length === 0 && (
-            <p className="px-2 py-6 text-center text-xs text-ink-3">
+            <p className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-line-strong px-3 py-8 text-center text-xs text-ink-3">
               {filtered && total ? "Нет заявок под фильтр" : "Перетащите сюда заявку"}
             </p>
           )}
@@ -225,21 +346,21 @@ export function Board() {
   const toast = useToast();
   const confirm = useConfirm();
   const now = useNow();
-  const linkChecked = useRef(false);
   const { data, error, mutate } = useSWR<BoardData>("board", api.board, {
     // Пока заявки разбираются — чаще, чтобы карточка обновилась сразу после разбора
     refreshInterval: boardRefresh,
-    onSuccess: () => {
-      // Заявку из ссылки ?lead=… открываем, как только загрузилась доска (ссылки из Telegram)
-      if (linkChecked.current) return;
-      linkChecked.current = true;
-      const id = new URLSearchParams(window.location.search).get("lead");
-      if (id) setOpenId(id);
-    },
   });
+  // Заявка из ссылки ?lead=… (кнопки в Telegram). Читаем адрес напрямую: запрос доски
+  // общий с боковым меню, и обработчик загрузки здесь может не вызваться
+  const linkedLead = useSyncExternalStore(noSubscribe, readLeadParam, () => null);
+  const [linkUsed, setLinkUsed] = useState(false);
 
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [panelFilters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  // Строка поиска — в верхней панели приложения, остальные фильтры — на доске
+  const { q, setQ } = useSearch();
+  const filters = useMemo(() => ({ ...panelFilters, q }), [panelFilters, q]);
   const [spamOpen, setSpamOpen] = useState(false);
+  const [mobileColumn, setMobileColumn] = useState<Column>("new");
   const [adding, setAdding] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -251,8 +372,10 @@ export function Board() {
   const leads = useMemo(() => data?.leads ?? [], [data]);
   const byId = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
 
+  const currentId = openId ?? (linkUsed ? null : linkedLead);
   const open = useCallback((id: string | null) => {
     setOpenId(id);
+    setLinkUsed(true);
     const url = id ? `?lead=${id}` : window.location.pathname;
     window.history.replaceState(null, "", url);
   }, []);
@@ -283,6 +406,10 @@ export function Board() {
 
   const items = baseItems;
   const filtered = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS);
+  const resetFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    setQ("");
+  };
   const shown = COLUMN_IDS.reduce((n, c) => n + baseItems[c].length, 0);
 
   const sensors = useSensors(
@@ -367,7 +494,7 @@ export function Board() {
     setResetting(true);
     try {
       await mutate(api.resetDemo(), { revalidate: false });
-      setFilters(EMPTY_FILTERS);
+      resetFilters();
       open(null);
       toast.ok("Демо сброшено");
     } catch (e) {
@@ -378,17 +505,36 @@ export function Board() {
   }
 
   const dragged = drag ? byId.get(drag.id) : undefined;
-  const urgentCount = leads.filter((l) => l.triage?.notify && l.status !== "closed").length;
+  const urgentCount = leads.filter((l) => l.triage?.notify && l.status !== "closed" && l.status !== "spam").length;
+  const activeType = panelFilters.types[0] ?? null;
+  const typeCounts = useMemo(() => {
+    const out = Object.fromEntries(TYPE_ORDER.map((t) => [t, 0])) as Record<LeadType, number>;
+    for (const l of leads) if (l.triage) out[l.triage.type] += 1;
+    return out;
+  }, [leads]);
+
+  function pickType(type: LeadType | null) {
+    setFilters({ ...panelFilters, types: type && type !== activeType ? [type] : [] });
+    // Спам живёт в своей колонке: выбрали его — показываем эту колонку
+    if (type === "spam" && type !== activeType) {
+      setSpamOpen(true);
+      setMobileColumn("spam");
+    }
+  }
 
   return (
-    <div className={`${PAGE} py-5 sm:py-6`}>
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+    <div className={`${PAGE} py-5 sm:py-7`}>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
         {/* На телефоне заголовок — отдельной строкой, кнопки — строкой под ним */}
         <div className="mr-auto min-w-0 max-sm:w-full">
-          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Заявки</h1>
-          <p className="mt-0.5 text-sm text-ink-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Доска заявок</h1>
+          <p className="mt-1 text-sm text-ink-3">
             {data
-              ? `${leads.length} ${plural(leads.length, ["заявка", "заявки", "заявок"])} · срочных в работе: ${urgentCount}`
+              ? `${leads.length} ${plural(leads.length, ["заявка", "заявки", "заявок"])} · ${
+                  urgentCount
+                    ? `${urgentCount} ${plural(urgentCount, ["срочная", "срочные", "срочных"])} в работе`
+                    : "срочных нет"
+                }`
               : "Загружаем доску…"}
           </p>
         </div>
@@ -399,7 +545,7 @@ export function Board() {
           onClick={resetDemo}
           title="Сбросить демо"
           aria-label="Сбросить демо"
-          className="max-sm:order-last"
+          className="h-10 rounded-xl max-sm:order-last"
         >
           <span className="max-sm:hidden">Сбросить демо</span>
         </Button>
@@ -409,7 +555,7 @@ export function Board() {
           onClick={exportCsv}
           title="Скачать все заявки в CSV"
           aria-label="Экспорт в CSV"
-          className="max-sm:order-last"
+          className="h-10 rounded-xl max-sm:order-last"
         >
           {/* На телефоне — только иконка, чтобы три кнопки встали в один ряд */}
           <span className="max-sm:hidden">Экспорт в CSV</span>
@@ -418,79 +564,51 @@ export function Board() {
           variant="primary"
           icon={<Plus className="size-4" />}
           onClick={() => setAdding(true)}
-          className="max-sm:flex-1"
+          className="h-10 rounded-xl px-4 max-sm:flex-1"
         >
           Добавить заявку
         </Button>
       </div>
 
-      <div className="mb-4 space-y-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="relative w-full sm:w-72">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" />
-            <input
-              value={filters.q}
-              onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-              placeholder="Поиск по тексту, имени, телефону"
-              className="h-9 w-full rounded-lg border border-line bg-surface pr-3 pl-9 text-sm outline-none placeholder:text-ink-3 focus:border-line-strong"
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {/* На телефоне таблетки — одной прокручиваемой строкой */}
+        <div className="-mx-4 flex min-w-0 items-center gap-2 overflow-x-auto px-4 scrollbar-none max-sm:basis-full sm:mx-0 sm:flex-wrap sm:px-0">
+          <TypePill
+            label="Все"
+            count={leads.length}
+            countClass="bg-sunken text-ink-2"
+            active={!activeType}
+            onClick={() => pickType(null)}
+          />
+          {TYPE_ORDER.map((t) => (
+            <TypePill
+              key={t}
+              label={TYPES[t].label}
+              count={typeCounts[t]}
+              countClass={TYPES[t].badge}
+              active={activeType === t}
+              onClick={() => pickType(t)}
             />
-          </label>
-          {filtered && (
-            <span className="flex items-center gap-2 text-xs text-ink-3">
-              Показано {shown} из {leads.length}
-              <button
-                type="button"
-                onClick={() => setFilters(EMPTY_FILTERS)}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-ink-2 hover:bg-sunken hover:text-ink"
-              >
-                <X className="size-3.5" />
-                Сбросить фильтры
-              </button>
-            </span>
-          )}
-        </div>
-        {/* На телефоне фильтры — одной прокручиваемой строкой */}
-        <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-thin sm:mx-0 sm:flex-wrap sm:px-0">
-          {(Object.keys(TYPES) as LeadType[])
-            .filter((t) => t !== "spam")
-            .map((t) => (
-              <Chip
-                key={t}
-                value={t}
-                active={filters.types.includes(t)}
-                onToggle={(v) => setFilters({ ...filters, types: toggle(filters.types, v) })}
-              >
-                {TYPES[t].label}
-              </Chip>
-            ))}
-          <span className="mx-1 h-5 w-px shrink-0 bg-line" />
-          {(Object.keys(URGENCY) as Urgency[]).map((u) => (
-            <Chip
-              key={u}
-              value={u}
-              active={filters.urgency.includes(u)}
-              onToggle={(v) => setFilters({ ...filters, urgency: toggle(filters.urgency, v) })}
-            >
-              <span className={`size-1.5 rounded-full ${URGENCY[u].dot}`} />
-              {URGENCY[u].short}
-            </Chip>
-          ))}
-          <span className="mx-1 h-5 w-px shrink-0 bg-line" />
-          {(Object.keys(CHANNELS) as Channel[]).map((c) => (
-            <Chip
-              key={c}
-              value={c}
-              active={filters.channels.includes(c)}
-              onToggle={(v) => setFilters({ ...filters, channels: toggle(filters.channels, v) })}
-            >
-              {CHANNELS[c]}
-            </Chip>
           ))}
         </div>
+        <MoreFilters filters={panelFilters} onChange={setFilters} />
+        {filtered && (
+          <span className="flex items-center gap-2 text-xs text-ink-3">
+            Показано {shown} из {leads.length}
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-accent hover:bg-accent-soft"
+            >
+              <X className="size-3.5" />
+              Сбросить
+            </button>
+          </span>
+        )}
       </div>
 
       {error && !data ? (
-        <div className="rounded-xl border border-line bg-surface p-6 text-center">
+        <div className="rounded-2xl border border-line bg-surface p-6 text-center">
           <p className="text-sm text-ink">{error.message}</p>
           <Button className="mt-3" onClick={() => mutate()}>
             Повторить
@@ -498,46 +616,73 @@ export function Board() {
         </div>
       ) : !data ? (
         <div className="flex gap-3 overflow-hidden">
-          {COLUMNS.slice(0, 4).map((c) => (
-            <div key={c.id} className="w-[82vw] max-w-80 shrink-0 space-y-2 sm:w-72">
-              <div className="skeleton h-6 w-28 rounded" />
-              <div className="skeleton h-28 rounded-xl" />
-              <div className="skeleton h-28 rounded-xl" />
+          {COLUMNS.slice(0, 4).map((c, i) => (
+            <div
+              key={c.id}
+              className={`w-full shrink-0 space-y-2 rounded-2xl bg-sunken/80 p-2 md:w-[300px] ${i ? "max-md:hidden" : ""}`}
+            >
+              <div className="skeleton h-7 w-28 rounded-lg" />
+              <div className="skeleton h-32 rounded-2xl" />
+              <div className="skeleton h-32 rounded-2xl" />
             </div>
           ))}
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDragEnd={onDragEnd}
-          onDragCancel={() => setDrag(null)}
-        >
-          <div className="-mx-4 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto px-4 pb-4 scrollbar-thin sm:-mx-6 sm:snap-none sm:px-6">
-            {COLUMNS.map((column) => (
-              <ColumnView
-                key={column.id}
-                column={column}
-                ids={items[column.id]}
-                byId={byId}
-                now={now}
-                fresh={fresh}
-                onOpen={open}
-                total={totals[column.id]}
-                filtered={filtered}
-                highlighted={!!drag && drag.over === column.id && byId.get(drag.id)?.status !== column.id}
-                collapsed={column.id === "spam" && !spamOpen}
-                onToggleCollapsed={column.id === "spam" ? () => setSpamOpen((v) => !v) : undefined}
-              />
+        <>
+          {/* На телефоне колонки — вкладками: одна колонка на весь экран вместо прокрутки вбок */}
+          <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 scrollbar-none md:hidden" role="tablist">
+            {COLUMNS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                role="tab"
+                aria-selected={mobileColumn === c.id}
+                onClick={() => setMobileColumn(c.id)}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap ${
+                  mobileColumn === c.id ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink-2"
+                }`}
+              >
+                <span className={`size-1.5 rounded-full ${c.dot}`} />
+                {c.label}
+                <span className={`text-xs tabular-nums ${mobileColumn === c.id ? "text-white/70" : "text-ink-3"}`}>
+                  {items[c.id].length}
+                </span>
+              </button>
             ))}
           </div>
-          {/* Без анимации возврата: карточка сразу встаёт на новое место */}
-          <DragOverlay dropAnimation={null}>
-            {dragged ? <DraggedLeadCard lead={dragged} now={now} /> : null}
-          </DragOverlay>
-        </DndContext>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            onDragCancel={() => setDrag(null)}
+          >
+            <div className="flex items-start gap-3 md:-mx-6 md:overflow-x-auto md:px-6 md:pb-4 scrollbar-thin">
+              {COLUMNS.map((column) => (
+                <ColumnView
+                  key={column.id}
+                  column={column}
+                  ids={items[column.id]}
+                  byId={byId}
+                  now={now}
+                  fresh={fresh}
+                  onOpen={open}
+                  total={totals[column.id]}
+                  filtered={filtered}
+                  highlighted={!!drag && drag.over === column.id && byId.get(drag.id)?.status !== column.id}
+                  mobileActive={mobileColumn === column.id}
+                  collapsed={column.id === "spam" && !spamOpen && mobileColumn !== "spam"}
+                  onToggleCollapsed={column.id === "spam" ? () => setSpamOpen((v) => !v) : undefined}
+                />
+              ))}
+            </div>
+            {/* Без анимации возврата: карточка сразу встаёт на новое место */}
+            <DragOverlay dropAnimation={null}>
+              {dragged ? <DraggedLeadCard lead={dragged} now={now} /> : null}
+            </DragOverlay>
+          </DndContext>
+        </>
       )}
 
       {adding && (
@@ -550,10 +695,10 @@ export function Board() {
           }}
         />
       )}
-      {openId && (
+      {currentId && (
         <LeadDrawer
-          id={openId}
-          initial={byId.get(openId)}
+          id={currentId}
+          initial={byId.get(currentId)}
           onClose={() => open(null)}
           onChanged={(lead) =>
             mutate({ leads: leads.map((l) => (l.id === lead.id ? { ...l, ...lead } : l)) }, { revalidate: false })

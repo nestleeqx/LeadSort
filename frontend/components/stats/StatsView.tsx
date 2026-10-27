@@ -25,15 +25,41 @@ function weekday(iso: string) {
   };
 }
 
-function Tile({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint?: string }) {
+const TONES = {
+  accent: "bg-accent-soft text-accent",
+  danger: "bg-danger-soft text-danger",
+  warn: "bg-warn-soft text-warn",
+  info: "bg-info-soft text-info",
+  neutral: "bg-sunken text-ink-2",
+};
+
+function Tile({
+  icon,
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+  tone: keyof typeof TONES;
+}) {
   return (
-    <Panel className="p-4">
-      <p className="flex items-center gap-1.5 text-xs text-ink-3">
-        {icon}
-        {label}
+    // Плитка не растягивается под большое число: значение уменьшается на телефоне, подпись прижата к низу
+    <Panel className="flex min-w-0 flex-col p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 text-xs font-medium text-ink-3">{label}</p>
+        <span className={`grid size-8 shrink-0 place-items-center rounded-xl ${TONES[tone]}`}>{icon}</span>
+      </div>
+      <p
+        className="mt-2 truncate text-2xl leading-tight font-semibold tracking-tight text-ink tabular-nums sm:text-[28px]"
+        title={value}
+      >
+        {value}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-ink tabular-nums">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-ink-3">{hint}</p>}
+      {hint && <p className="mt-auto pt-2 text-xs text-ink-3">{hint}</p>}
     </Panel>
   );
 }
@@ -135,8 +161,8 @@ function BarList({ rows, total }: { rows: { label: string; count: number }[]; to
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <Panel className="p-4 sm:p-5">
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
+    <Panel className="p-5 sm:p-6">
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
       {hint && <p className="mt-0.5 text-xs text-ink-3">{hint}</p>}
       <div className="mt-4">{children}</div>
     </Panel>
@@ -160,12 +186,12 @@ export function StatsView() {
   }
 
   const header = (
-    <div className="mb-5 flex flex-wrap items-end gap-3">
+    <div className="mb-5 flex flex-wrap items-center gap-3">
       <div className="mr-auto">
-        <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Статистика</h1>
-        <p className="mt-0.5 text-sm text-ink-3">По заявкам на вашей доске, включая демо</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Статистика</h1>
+        <p className="mt-1 text-sm text-ink-3">По заявкам на вашей доске, включая демо</p>
       </div>
-      <Button icon={<Download className="size-4" />} loading={exporting} onClick={exportCsv}>
+      <Button icon={<Download className="size-4" />} loading={exporting} onClick={exportCsv} className="h-10">
         Экспорт в CSV
       </Button>
     </div>
@@ -189,12 +215,12 @@ export function StatsView() {
     return (
       <>
         {header}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className="skeleton h-24 rounded-xl" />
+            <div key={i} className="skeleton h-28 rounded-2xl" />
           ))}
         </div>
-        <div className="skeleton mt-4 h-64 rounded-xl" />
+        <div className="skeleton mt-4 h-64 rounded-2xl" />
       </>
     );
   }
@@ -204,33 +230,39 @@ export function StatsView() {
   return (
     <>
       {header}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {/* Пятая плитка на телефоне — во всю ширину, чтобы не висела одна в половине ряда */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 max-sm:[&>*:last-child]:col-span-2">
         <Tile
-          icon={<Inbox className="size-3.5" />}
+          icon={<Inbox className="size-4" />}
+          tone="accent"
           label="За 7 дней"
-          value={String(data.week_total)}
+          value={data.week_total.toLocaleString("ru-RU")}
           hint={`всего на доске ${data.total}`}
         />
         <Tile
-          icon={<AlertTriangle className="size-3.5" />}
+          icon={<AlertTriangle className="size-4" />}
+          tone="danger"
           label="Срочных в работе"
-          value={String(data.urgent_open)}
+          value={data.urgent_open.toLocaleString("ru-RU")}
           hint="с уведомлением в Telegram"
         />
         <Tile
-          icon={<ShieldOff className="size-3.5" />}
+          icon={<ShieldOff className="size-4" />}
+          tone="warn"
           label="Доля спама"
           value={percent(data.spam_share)}
           hint={`за неделю отсеяно ${data.week_spam}`}
         />
         <Tile
-          icon={<Clock className="size-3.5" />}
+          icon={<Clock className="size-4" />}
+          tone="info"
           label="Разбор нейросетью"
           value={data.avg_triage_ms ? formatSeconds(data.avg_triage_ms) : "—"}
           hint="в среднем на заявку"
         />
         <Tile
-          icon={<PenLine className="size-3.5" />}
+          icon={<PenLine className="size-4" />}
+          tone="neutral"
           label="Поправлено вручную"
           value={percent(data.edited_share)}
           hint="менеджер изменил поля"

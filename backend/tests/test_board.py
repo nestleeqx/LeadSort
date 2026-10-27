@@ -155,6 +155,22 @@ async def test_retriage_replaces_manual_edits(client):
     assert detail["triage"]["budget"] != "миллион"
 
 
+async def test_retriage_asks_model_again(client, redis):
+    resp = await client.post("/api/leads", json={"text": "Нужен лендинг для кофейни к весне"})
+    lead_id = resp.json()["id"]
+    await drain()
+    # Ответ модели уже в кеше; «Разобрать заново» всё равно должен её спросить
+    cached = await redis.keys("leadsort:llm:*")
+    assert cached
+    for key in cached:
+        await redis.set(key, "испорчено")
+    await client.post(f"/api/leads/{lead_id}/retriage")
+    await drain()
+    detail = (await client.get(f"/api/leads/{lead_id}")).json()
+    assert detail["state"] == "done"
+    assert not await redis.keys("leadsort:fresh:*")
+
+
 async def test_reset_demo_restores_board(client):
     leads = await _board(client)
     await client.patch(f"/api/leads/{leads[0]['id']}", json={"status": "closed", "position": 0})

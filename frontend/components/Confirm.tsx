@@ -67,11 +67,11 @@ function Dialog({ pending, onClose }: { pending: Pending; onClose: (ok: boolean)
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={pending.description ? descId : undefined}
-        className="pop relative w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-[0_30px_60px_-20px_rgba(20,20,20,.35)]"
+        className="pop relative w-full max-w-sm rounded-3xl border border-line bg-surface p-6 shadow-[0_30px_60px_-20px_rgba(21,23,28,.35)]"
       >
         <div className="flex gap-3">
           {danger && (
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-danger-soft text-danger">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-danger-soft text-danger">
               <AlertTriangle className="size-4.5" />
             </span>
           )}

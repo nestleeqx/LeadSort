@@ -162,23 +162,26 @@ def _finish(ai: AiTriage, contacts: Contacts) -> Triage:
     )
 
 
-async def _ask_model(provider: LLMProvider, redis: Redis, text: str) -> AiTriage:
+async def _ask_model(provider: LLMProvider, redis: Redis, text: str, fresh: bool) -> AiTriage:
     system, user = triage_prompt(text)
     try:
-        return await cached_complete(redis, provider, system, user, AiTriage)
+        return await cached_complete(redis, provider, system, user, AiTriage, fresh=fresh)
     except LLMInvalidResponse as e:
         # Битый JSON бывает редко — один повторный запрос обычно его исправляет
         log.warning("Ответ модели не прошёл схему, повторяем: %s", e)
         return await provider.complete_json(system, user, AiTriage)
 
 
-async def triage_lead(provider: LLMProvider, redis: Redis, text: str) -> TriageResult:
+async def triage_lead(
+    provider: LLMProvider, redis: Redis, text: str, fresh: bool = False
+) -> TriageResult:
+    """fresh — мимо кеша ответов модели: так работает «Разобрать заново»."""
     found = find_contacts(text)
     by_rules = _by_rules(text, found)
     if by_rules:
         highlights = _highlights(found, by_rules.contacts.name, text)
         return TriageResult(by_rules, highlights, [], "rules")
 
-    ai = await _ask_model(provider, redis, text)
+    ai = await _ask_model(provider, redis, text, fresh)
     contacts, notes = _merge_contacts(ai, found, text)
     return TriageResult(_finish(ai, contacts), _highlights(found, contacts.name, text), notes, "ai")

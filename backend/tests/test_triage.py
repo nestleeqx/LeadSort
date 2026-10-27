@@ -88,6 +88,17 @@ async def test_same_text_is_taken_from_cache(redis):
     assert provider.calls == 1
 
 
+async def test_fresh_triage_skips_cache_and_refreshes_it(redis):
+    provider = Scripted()
+    await triage_lead(provider, redis, LEAD)
+    provider.reply["summary"] = "Новый ответ модели."
+    result = await triage_lead(provider, redis, LEAD, fresh=True)
+    assert provider.calls == 2 and result.triage.summary == "Новый ответ модели."
+    # Свежий ответ лёг в кеш вместо старого
+    cached = await triage_lead(provider, redis, LEAD)
+    assert provider.calls == 2 and cached.triage.summary == "Новый ответ модели."
+
+
 async def test_broken_json_is_retried_once(redis):
     class Flaky(Scripted):
         async def _complete(self, system, user, schema):

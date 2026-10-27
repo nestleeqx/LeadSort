@@ -55,7 +55,7 @@ function Step({ done, active, children }: { done: boolean; active?: boolean; chi
       {done ? (
         <CheckCircle2 className="size-4 shrink-0 text-accent" />
       ) : active ? (
-        <Loader2 className="size-4 shrink-0 animate-spin text-info" />
+        <Loader2 className="size-4 shrink-0 animate-spin text-accent" />
       ) : (
         <Circle className="size-4 shrink-0 text-line-strong" />
       )}
@@ -133,13 +133,23 @@ function ManagerPanel({ sent }: { sent: Sent | null }) {
               </div>
               <p className="mt-3 text-sm leading-relaxed">{t.summary}</p>
               <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-                {(t.contacts.name || t.contacts.phones.length > 0) && (
+                {(t.contacts.name ||
+                  t.contacts.phones.length + t.contacts.emails.length + t.contacts.telegram.length > 0) && (
                   <>
                     <dt className="text-ink-3">Контакты</dt>
-                    <dd className="min-w-0 break-words">
-                      {[t.contacts.name, ...t.contacts.phones, ...t.contacts.emails, ...t.contacts.telegram]
-                        .filter(Boolean)
-                        .join(" · ")}
+                    {/* Каждый контакт — своей строкой: номер не разрывается, длинная почта переносится внутри */}
+                    <dd className="min-w-0 space-y-0.5">
+                      {t.contacts.name && <span className="block">{t.contacts.name}</span>}
+                      {t.contacts.phones.map((v) => (
+                        <span key={v} className="block whitespace-nowrap">
+                          {v}
+                        </span>
+                      ))}
+                      {[...t.contacts.emails, ...t.contacts.telegram].map((v) => (
+                        <span key={v} className="block break-all">
+                          {v}
+                        </span>
+                      ))}
                     </dd>
                   </>
                 )}
@@ -199,7 +209,7 @@ function ManagerPanel({ sent }: { sent: Sent | null }) {
 
           <Link
             href={`/app?lead=${sent.id}`}
-            className="mt-5 inline-flex h-11 items-center justify-center gap-1.5 self-stretch sm:h-10 sm:self-start rounded-lg bg-ink px-4 text-sm font-medium text-white transition-colors hover:bg-ink/85"
+            className="mt-5 inline-flex h-11 items-center justify-center gap-1.5 self-stretch rounded-xl bg-accent px-4 text-sm font-medium text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,.6)] transition-colors hover:bg-accent-hover sm:h-10 sm:self-start"
           >
             Открыть на доске
             <ArrowRight className="size-4" />

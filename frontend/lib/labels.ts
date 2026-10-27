@@ -15,8 +15,8 @@ export const URGENCY: Record<Urgency, { label: string; short: string; dot: strin
 };
 
 export const COLUMNS: { id: Column; label: string; dot: string }[] = [
-  { id: "new", label: "Новая", dot: "bg-info" },
-  { id: "in_progress", label: "В работе", dot: "bg-lime-strong" },
+  { id: "new", label: "Новая", dot: "bg-accent" },
+  { id: "in_progress", label: "В работе", dot: "bg-info" },
   { id: "waiting", label: "Ждём клиента", dot: "bg-warn" },
   { id: "closed", label: "Закрыта", dot: "bg-ink-3" },
   { id: "spam", label: "Спам", dot: "bg-danger" },

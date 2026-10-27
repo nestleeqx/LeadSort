@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.llm import LLMError, LLMProvider
 from app.models import Lead
 from app.services.leads import add_event, apply_result
+from app.services.redis_store import PREFIX
 from app.services.triage import triage_lead
 
 log = logging.getLogger(__name__)
@@ -19,6 +20,15 @@ log = logging.getLogger(__name__)
 # Заявка «в работе» дольше этого срока считается брошенной (упал процесс или функция)
 STALE_AFTER = timedelta(minutes=2)
 FAILED = "Нейросеть не ответила. Нажмите «Разобрать заново»."
+
+
+def _fresh_key(lead_id: str) -> str:
+    return f"{PREFIX}fresh:{lead_id}"
+
+
+async def mark_fresh(redis: Redis, lead_id: str) -> None:
+    """«Разобрать заново»: следующий разбор этой заявки пойдёт к модели мимо кеша."""
+    await redis.set(_fresh_key(lead_id), "1", ex=3600)
 
 
 async def claim(sessions: async_sessionmaker, visitor_id: str | None, limit: int) -> list[str]:
@@ -61,10 +71,11 @@ async def process_lead(
             return
         text = lead.text
 
+    fresh = bool(await redis.getdel(_fresh_key(lead_id)))
     started = time.perf_counter()
     result = error = None
     try:
-        result = await triage_lead(provider, redis, text)
+        result = await triage_lead(provider, redis, text, fresh=fresh)
     except LLMError as e:
         # Пользователь видит только понятный текст, подробности — в логе
         log.warning("Заявка %s: %s", lead_id, e)

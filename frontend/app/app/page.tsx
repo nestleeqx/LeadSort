@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { AppHeader } from "@/components/AppHeader";
 import { Board } from "@/components/board/Board";
 
 export const metadata: Metadata = {
@@ -10,10 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function BoardPage() {
-  return (
-    <div className="min-h-full">
-      <AppHeader />
-      <Board />
-    </div>
-  );
+  return <Board />;
 }

@@ -98,18 +98,18 @@ function Result({ data, onSend, sending }: { data: TriageResponse; onSend: () =>
       {/* На телефоне уведомление — отдельной полосой под тегами, на широком экране — справа в строке */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2.5">
-          <span className={`rounded-md px-2 py-1 text-xs font-semibold ${type.badge}`}>{type.label}</span>
+          <span className={`rounded-lg px-2 py-1 text-xs font-semibold ${type.badge}`}>{type.label}</span>
           <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${urgency.text}`}>
             <span className={`size-2 rounded-full ${urgency.dot}`} />
             {urgency.label}
           </span>
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium sm:ml-auto sm:px-2 sm:py-1 ${
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium sm:ml-auto ${
             t.notify ? "bg-ink text-white" : "bg-sunken text-ink-3"
           }`}
         >
-          {t.notify ? <Bell className="size-3.5 text-lime" /> : <BellOff className="size-3.5" />}
+          {t.notify ? <Bell className="size-3.5 text-glow" /> : <BellOff className="size-3.5" />}
           {t.notify ? "Уведомим менеджера в Telegram" : "Без уведомления"}
         </span>
       </div>
@@ -197,14 +197,14 @@ function Result({ data, onSend, sending }: { data: TriageResponse; onSend: () =>
               Скопировать
             </Button>
           </div>
-          <div className="rounded-lg border border-line bg-canvas px-3.5 py-3 text-sm leading-relaxed whitespace-pre-wrap text-ink">
+          <div className="rounded-xl border border-line bg-sunken/50 px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-ink">
             {t.reply_draft}
           </div>
         </div>
       )}
 
       {notes.length > 0 && (
-        <div className="rounded-lg bg-warn-soft px-3.5 py-3">
+        <div className="rounded-xl border border-warn/20 bg-warn-soft px-4 py-3">
           <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-warn">
             <TriangleAlert className="size-3.5" />
             Поправили за нейросетью
@@ -239,26 +239,26 @@ function Placeholder({ loading }: { loading: boolean }) {
     return (
       <div className="space-y-5" aria-busy>
         <div className="flex gap-2">
-          <div className="skeleton h-6 w-24 rounded-md" />
-          <div className="skeleton h-6 w-36 rounded-md" />
+          <div className="skeleton h-7 w-24 rounded-lg" />
+          <div className="skeleton h-7 w-36 rounded-lg" />
         </div>
         <div className="space-y-2">
           <div className="skeleton h-4 w-full rounded" />
           <div className="skeleton h-4 w-4/5 rounded" />
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          <div className="skeleton h-20 rounded-lg" />
-          <div className="skeleton h-20 rounded-lg" />
+          <div className="skeleton h-20 rounded-xl" />
+          <div className="skeleton h-20 rounded-xl" />
         </div>
-        <div className="skeleton h-28 rounded-lg" />
+        <div className="skeleton h-28 rounded-xl" />
         <p className="text-sm text-ink-3">Нейросеть читает заявку…</p>
       </div>
     );
   }
   return (
     <div className="flex h-full min-h-72 flex-col items-center justify-center gap-3 text-center">
-      <div className="flex size-11 items-center justify-center rounded-xl bg-sunken">
-        <Wand2 className="size-5 text-ink-3" />
+      <div className="flex size-12 items-center justify-center rounded-2xl bg-accent-soft">
+        <Wand2 className="size-5 text-accent" />
       </div>
       <div>
         <p className="text-sm font-medium text-ink">Здесь появится разбор</p>
@@ -324,7 +324,7 @@ export function TriageSandbox() {
     // Порядок в разметке — для телефона: форма, результат, текст с подсветкой.
     // На широком экране результат справа на всю высоту.
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-      <Panel className="p-4 sm:p-5 lg:col-start-1">
+      <Panel className="p-4 sm:p-6 lg:col-start-1">
         <label htmlFor="lead-text" className="mb-2 block text-sm font-medium text-ink">
           Текст заявки
         </label>
@@ -336,11 +336,12 @@ export function TriageSandbox() {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submit();
           }}
           placeholder="Вставьте письмо, сообщение из мессенджера или текст из формы на сайте"
-          className="block min-h-56 w-full resize-none rounded-lg field-sizing-content max-h-[60vh] border border-line bg-canvas px-3.5 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-3 focus:border-line-strong focus:bg-surface"
+          className="block max-h-[60vh] min-h-56 w-full resize-none rounded-xl border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-ink outline-none field-sizing-content transition-shadow placeholder:text-ink-3 focus:border-accent/40 focus:ring-4 focus:ring-accent-soft"
         />
-        <div className="mt-2 flex items-center justify-between text-xs">
+        {/* Обе подписи не переносятся внутри себя: если тесно, вторая уходит на строку ниже целиком */}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs whitespace-nowrap tabular-nums">
           <span className={tooLong ? "font-semibold text-danger" : "text-ink-3"}>
-            {trimmed.length.toLocaleString("ru-RU")} / {maxChars.toLocaleString("ru-RU")}
+            {trimmed.length.toLocaleString("ru-RU")} из {maxChars.toLocaleString("ru-RU")} символов
           </span>
           {limits && <span className="text-ink-3">Осталось разборов в этот час: {limits.triages_left}</span>}
         </div>
@@ -353,7 +354,7 @@ export function TriageSandbox() {
                 key={s.label}
                 type="button"
                 onClick={() => setText(s.text)}
-                className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                className={`h-8 rounded-full border px-3 text-xs font-medium transition-colors ${
                   text === s.text
                     ? "border-ink bg-ink text-white"
                     : "border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink"
@@ -379,7 +380,7 @@ export function TriageSandbox() {
         </div>
       </Panel>
 
-      <div ref={resultRef} className="scroll-mt-4 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+      <div ref={resultRef} className="scroll-mt-4 lg:sticky lg:top-22 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <Panel className="p-4 sm:p-6">
           {result && !loading ? (
             <Result data={result.data} onSend={sendToBoard} sending={sending} />
@@ -390,7 +391,7 @@ export function TriageSandbox() {
       </div>
 
       {result && (
-        <Panel className="rise p-4 sm:p-5 lg:col-start-1">
+        <Panel className="rise p-4 sm:p-6 lg:col-start-1">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <SectionLabel className="">Что нашли в тексте</SectionLabel>
             <HighlightLegend />

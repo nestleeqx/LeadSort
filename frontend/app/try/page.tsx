@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
-import { AppHeader } from "@/components/AppHeader";
+import { AppShell } from "@/components/shell/AppShell";
 import { TriageSandbox } from "@/components/TriageSandbox";
 import { PAGE } from "@/lib/layout";
 
 export const metadata: Metadata = {
-  title: "Разбор заявки",
+  title: "Проверить разбор",
   description: "Вставьте текст заявки — нейросеть определит тип и срочность, найдёт контакты и подготовит ответ.",
 };
 
 export default function TryPage() {
   return (
-    <div className="min-h-full">
-      <AppHeader />
-      <div className={`${PAGE} py-6 sm:py-8`}>
+    <AppShell>
+      <div className={`${PAGE} py-5 sm:py-7`}>
         <div className="mb-6 max-w-2xl">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Разбор заявки</h1>
-          <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Проверить разбор</h1>
+          <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">
             Вставьте текст письма или сообщения — нейросеть определит тип и срочность, найдёт контакты, даже если они
             написаны вперемешку, и подготовит черновик ответа клиенту.
           </p>
@@ -26,6 +25,6 @@ export default function TryPage() {
         </div>
         <TriageSandbox />
       </div>
-    </div>
+    </AppShell>
   );
 }

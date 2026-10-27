@@ -24,6 +24,7 @@ from app.services.crm import CRM_NAMES, build_request, demo_response
 from app.services.demo import ensure_visitor, reset_demo
 from app.services.export import leads_csv
 from app.services.leads import add_event, create_lead, edit_triage, form_text, move_lead
+from app.services.processing import mark_fresh
 from app.services.redis_store import hit_limit
 from app.services.stats import board_stats
 
@@ -157,6 +158,8 @@ async def retriage(
     if lead.state in {"queued", "running"}:
         raise HTTPException(409, "Заявка уже разбирается.")
     await hit_limit(redis, "triage", ip, get_settings().triages_per_hour)
+    # Отметка — до постановки в очередь, иначе параллельный опрос разберёт заявку из кеша
+    await mark_fresh(redis, lead.id)
     lead.state = "queued"
     lead.error = None
     add_event(session, lead.id, "Отправлена на повторный разбор")

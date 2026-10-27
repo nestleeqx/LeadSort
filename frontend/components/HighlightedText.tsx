@@ -23,10 +23,10 @@ export function HighlightLegend() {
   return (
     <span className="flex items-center gap-3 text-[11px] text-ink-3">
       <span className="flex items-center gap-1">
-        <span className="size-2 rounded-sm bg-lime-strong" /> контакты
+        <span className="size-2 rounded-sm bg-glow-strong" /> контакты
       </span>
       <span className="flex items-center gap-1">
-        <span className="size-2 rounded-sm bg-[#9db6e8]" /> имя
+        <span className="size-2 rounded-sm bg-[#b9a6f5]" /> имя
       </span>
     </span>
   );

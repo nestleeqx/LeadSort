@@ -1,6 +1,6 @@
 "use client";
 
-import { Shuffle } from "lucide-react";
+import { Mail, Shuffle } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { SAMPLES } from "@/lib/samples";
@@ -62,12 +62,17 @@ export function AddLeadDialog({ onClose, onAdded }: { onClose: () => void; onAdd
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="pop relative w-full max-w-xl rounded-t-2xl border border-line bg-surface p-5 shadow-[0_30px_60px_-20px_rgba(20,20,20,.35)] sm:rounded-2xl"
+        className="pop relative w-full max-w-xl rounded-t-3xl border border-line bg-surface p-5 shadow-[0_30px_60px_-20px_rgba(21,23,28,.35)] sm:rounded-3xl sm:p-6"
       >
-        <h2 id={titleId} className="font-semibold">
-          Добавить заявку
-        </h2>
-        <p className="mt-1 text-sm text-ink-2">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-accent-soft text-accent">
+            <Mail className="size-4.5" />
+          </span>
+          <h2 id={titleId} className="text-base font-semibold">
+            Добавить заявку
+          </h2>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-ink-2">
           Вставьте текст письма или сообщения — нейросеть разберёт его за несколько секунд, карточка появится в колонке
           «Новая».
         </p>
@@ -79,13 +84,13 @@ export function AddLeadDialog({ onClose, onAdded }: { onClose: () => void; onAdd
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submit();
           }}
           placeholder="Здравствуйте! Нужен сайт для…"
-          className="mt-4 block min-h-44 w-full resize-none rounded-lg field-sizing-content max-h-[60vh] border border-line bg-canvas px-3.5 py-3 text-sm leading-relaxed outline-none placeholder:text-ink-3 focus:border-line-strong focus:bg-surface"
+          className="mt-4 block max-h-[60vh] min-h-44 w-full resize-none rounded-xl border border-line bg-surface px-4 py-3 text-sm leading-relaxed outline-none field-sizing-content transition-shadow placeholder:text-ink-3 focus:border-accent/40 focus:ring-4 focus:ring-accent-soft"
         />
         <div className="mt-2 flex items-center justify-between text-xs">
           <button
             type="button"
             onClick={example}
-            className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-ink-2 hover:bg-sunken hover:text-ink"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3 font-medium text-ink-2 hover:bg-sunken hover:text-ink"
           >
             <Shuffle className="size-3.5" />
             Подставить пример

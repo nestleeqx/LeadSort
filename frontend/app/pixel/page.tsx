@@ -97,7 +97,7 @@ export default function PixelPage() {
           </span>
           <Link
             href="/app"
-            className="ml-auto inline-flex shrink-0 items-center gap-1 font-medium whitespace-nowrap text-lime hover:underline"
+            className="ml-auto inline-flex shrink-0 items-center gap-1 font-medium whitespace-nowrap text-glow hover:underline"
           >
             Открыть доску
             <ArrowRight className="size-3.5" />

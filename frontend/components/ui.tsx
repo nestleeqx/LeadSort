@@ -2,15 +2,15 @@ import { Loader2 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 
 const VARIANTS = {
-  primary: "bg-ink text-white hover:bg-ink/85 shadow-[0_1px_0_rgba(0,0,0,.08)]",
+  primary: "bg-accent text-white hover:bg-accent-hover shadow-[0_1px_2px_rgba(37,99,235,.35)]",
   secondary: "border border-line bg-surface text-ink hover:bg-sunken",
   ghost: "text-ink-2 hover:bg-sunken hover:text-ink",
   destructive: "bg-danger text-white hover:bg-danger/90 shadow-[0_1px_0_rgba(0,0,0,.08)]",
 };
 
 export function buttonClasses(variant: keyof typeof VARIANTS = "secondary", size: "sm" | "md" = "md") {
-  return `inline-flex items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-45 ${
-    size === "sm" ? "h-7 px-2 text-xs" : "h-9 px-3.5 text-sm"
+  return `inline-flex items-center justify-center gap-1.5 font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-45 ${
+    size === "sm" ? "h-7 rounded-lg px-2 text-xs" : "h-9 rounded-xl px-3.5 text-sm"
   } ${VARIANTS[variant]}`;
 }
 
@@ -40,7 +40,7 @@ export function Button({
 }
 
 export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-line bg-surface ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl border border-line bg-surface ${className}`}>{children}</div>;
 }
 
 export function SectionLabel({ children, className = "mb-1.5" }: { children: ReactNode; className?: string }) {

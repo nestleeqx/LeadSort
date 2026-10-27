@@ -2,15 +2,15 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlertCircle, Bell, Globe, Loader2, PenLine, Send, Type } from "lucide-react";
+import { AlertCircle, Bell, Check, Globe, Loader2, Mail, PenLine, Send } from "lucide-react";
 import type { ReactNode } from "react";
 import { TYPES, URGENCY, timeAgo } from "@/lib/labels";
 import type { Channel, Lead } from "@/lib/types";
 
-const CHANNEL_ICONS: Record<Channel, ReactNode> = {
-  form: <Globe className="size-3.5" />,
-  telegram: <Send className="size-3.5" />,
-  manual: <Type className="size-3.5" />,
+export const CHANNEL_ICONS: Record<Channel, ReactNode> = {
+  form: <Globe className="size-4 text-accent" />,
+  telegram: <Send className="size-4 text-[#229ED9]" />,
+  manual: <Mail className="size-4 text-ink-2" />,
 };
 
 export const CHANNEL_TITLES: Record<Channel, string> = {
@@ -19,80 +19,121 @@ export const CHANNEL_TITLES: Record<Channel, string> = {
   manual: "Добавлена вручную",
 };
 
-/** Кто написал: имя или первый найденный контакт. */
-function author(lead: Lead) {
-  const c = lead.triage?.contacts;
-  if (!c) return "";
-  const contact = c.phones[0] ?? c.emails[0] ?? c.telegram[0] ?? "";
-  return [c.name, contact].filter(Boolean).join(" · ");
+const pendingState = (lead: Lead) => lead.state === "queued" || lead.state === "running";
+const isUrgent = (lead: Lead) =>
+  lead.state === "done" && !!lead.triage?.notify && lead.status !== "closed" && lead.status !== "spam";
+
+/** Маленький статус в углу карточки — как «Syncing» и «Updated» в дашбордах интеграций. */
+function StatusChip({ lead, fresh }: { lead: Lead; fresh: boolean }) {
+  const chip = "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold";
+  if (pendingState(lead)) {
+    return (
+      <span className={`${chip} bg-accent text-white`}>
+        <Loader2 className="size-3 animate-spin" />
+        Разбор
+      </span>
+    );
+  }
+  if (lead.state === "error") {
+    return (
+      <span className={`${chip} border border-danger/30 bg-danger-soft text-danger`}>
+        <AlertCircle className="size-3" />
+        Ошибка
+      </span>
+    );
+  }
+  if (fresh) {
+    return (
+      <span className={`${chip} bg-ink text-white`}>
+        <Check className="size-3" />
+        Разобрана
+      </span>
+    );
+  }
+  if (isUrgent(lead)) {
+    return (
+      <span
+        className={`${chip} border border-danger/30 bg-danger-soft text-danger`}
+        title="Менеджер получает уведомление"
+      >
+        <Bell className="size-3" />
+        Срочно
+      </span>
+    );
+  }
+  if (lead.edited.length) {
+    return (
+      <span className={`${chip} border border-line bg-sunken text-ink-3`} title="Поля поправлены вручную">
+        <PenLine className="size-3" />
+        Поправлено
+      </span>
+    );
+  }
+  return null;
 }
 
-export function LeadCardBody({ lead, now }: { lead: Lead; now: number }) {
+export function LeadCardBody({ lead, now, fresh = false }: { lead: Lead; now: number; fresh?: boolean }) {
   const t = lead.triage;
-  const pending = lead.state === "queued" || lead.state === "running";
-  const who = author(lead);
+  const pending = pendingState(lead);
+  const c = t?.contacts;
+  const firstContact = c?.phones[0] ?? c?.emails[0] ?? c?.telegram[0];
+  // Без имени заголовком становится контакт, а под ним — откуда пришла заявка
+  const name = c?.name || firstContact || (pending ? "Новая заявка" : "Без имени");
+  const contact = (c?.name && firstContact) || CHANNEL_TITLES[lead.channel];
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-3">
+        <span
+          className="grid size-9 shrink-0 place-items-center rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(21,23,28,.05)]"
+          title={CHANNEL_TITLES[lead.channel]}
+        >
+          {CHANNEL_ICONS[lead.channel]}
+        </span>
+        <div className="min-w-0 flex-1 pt-px">
+          <p className="truncate text-sm font-semibold text-ink">{name}</p>
+          <p className="truncate text-xs text-ink-3">{contact}</p>
+        </div>
+        <StatusChip lead={lead} fresh={fresh} />
+      </div>
+
+      <p className={`mt-2.5 line-clamp-2 text-[13px] leading-snug ${t && !pending ? "text-ink-2" : "text-ink-3"}`}>
+        {t && !pending ? t.summary : lead.text}
+      </p>
+
+      <div className="mt-3 flex items-center gap-2 border-t border-line/70 pt-2.5">
         {t && !pending ? (
           <>
-            <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${TYPES[t.type].badge}`}>
+            <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${TYPES[t.type].badge}`}>
               {TYPES[t.type].label}
             </span>
-            {t.type !== "spam" && (
+            {/* У срочной в работе срочность уже на значке в углу — не повторяем */}
+            {t.type !== "spam" && !isUrgent(lead) && (
               <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${URGENCY[t.urgency].text}`}>
                 <span className={`size-1.5 rounded-full ${URGENCY[t.urgency].dot}`} />
                 {URGENCY[t.urgency].short}
               </span>
             )}
           </>
-        ) : pending ? (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-info">
-            <Loader2 className="size-3 animate-spin" />
-            Разбираем…
-          </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-danger">
-            <AlertCircle className="size-3" />
-            Не удалось разобрать
+          <span className="text-[11px] text-ink-3">
+            {pending ? "Нейросеть читает заявку…" : "Не удалось разобрать"}
           </span>
         )}
-        <span
-          className="ml-auto flex shrink-0 items-center gap-1 text-[11px] text-ink-3"
-          title={CHANNEL_TITLES[lead.channel]}
-        >
-          {CHANNEL_ICONS[lead.channel]}
-          {timeAgo(lead.created_at, now)}
-        </span>
+        <span className="ml-auto shrink-0 text-[11px] text-ink-3">{timeAgo(lead.created_at, now)}</span>
       </div>
-
-      {who && <p className="mt-2 truncate text-[13px] font-medium text-ink">{who}</p>}
-      <p className={`mt-1 line-clamp-3 text-[13px] leading-snug ${t && !pending ? "text-ink-2" : "text-ink-3"}`}>
-        {t && !pending ? t.summary : lead.text}
-      </p>
-
-      {t && !pending && (t.notify || lead.edited.length > 0) && (
-        <div className="mt-2.5 flex items-center gap-3 text-[11px] text-ink-3">
-          {t.notify && (
-            <span className="inline-flex items-center gap-1" title="Срочная заявка: уведомление менеджеру в Telegram">
-              <Bell className="size-3" />
-              Telegram
-            </span>
-          )}
-          {lead.edited.length > 0 && (
-            <span className="inline-flex items-center gap-1" title="Поля поправлены вручную">
-              <PenLine className="size-3" />
-              поправлено
-            </span>
-          )}
-        </div>
-      )}
     </>
   );
 }
 
-const CARD = "block w-full rounded-xl border bg-surface p-3 text-left shadow-[0_1px_0_rgba(0,0,0,.03)]";
+/** Подложка карточки: срочные — с тёплым оттенком, разбираемые — с синим, как активные карточки референса. */
+function tint(lead: Lead) {
+  if (pendingState(lead)) return "border-accent/25 bg-gradient-to-b from-accent-soft to-surface";
+  if (isUrgent(lead)) return "border-danger/20 bg-gradient-to-b from-danger-soft/70 to-surface";
+  return "border-line bg-surface";
+}
+
+const CARD = "block w-full rounded-2xl border p-3.5 text-left";
 
 export function SortableLeadCard({
   lead,
@@ -109,7 +150,6 @@ export function SortableLeadCard({
     id: lead.id,
     data: { status: lead.status },
   });
-  const urgent = lead.triage?.notify && lead.state === "done";
 
   return (
     <button
@@ -119,11 +159,11 @@ export function SortableLeadCard({
       {...attributes}
       {...listeners}
       onClick={() => onOpen(lead.id)}
-      className={`${CARD} cursor-grab touch-manipulation transition-[border-color,box-shadow] hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing ${
-        urgent ? "border-danger/35" : "border-line"
-      } ${isDragging ? "opacity-40" : ""} ${fresh ? "flash" : ""}`}
+      className={`${CARD} ${tint(lead)} cursor-grab touch-manipulation shadow-[0_1px_2px_rgba(21,23,28,.04)] transition-[border-color,box-shadow,transform] hover:-translate-y-px hover:shadow-[0_10px_24px_-14px_rgba(21,23,28,.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing ${
+        isDragging ? "opacity-40" : ""
+      } ${fresh ? "flash" : ""}`}
     >
-      <LeadCardBody lead={lead} now={now} />
+      <LeadCardBody lead={lead} now={now} fresh={fresh} />
     </button>
   );
 }
@@ -132,7 +172,7 @@ export function SortableLeadCard({
 export function DraggedLeadCard({ lead, now }: { lead: Lead; now: number }) {
   return (
     <div
-      className={`${CARD} rotate-[1.5deg] cursor-grabbing border-line-strong shadow-[0_18px_40px_-16px_rgba(20,20,20,.35)]`}
+      className={`${CARD} ${tint(lead)} rotate-[1.5deg] cursor-grabbing shadow-[0_24px_48px_-20px_rgba(21,23,28,.45)]`}
     >
       <LeadCardBody lead={lead} now={now} />
     </div>
