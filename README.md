@@ -169,23 +169,6 @@ OPENAI_REASONING_EFFORT=none
 
 **Telegram-бот локально.** Создайте бота у [@BotFather](https://t.me/BotFather) и добавьте токен в `.env` строкой `TELEGRAM_BOT_TOKEN=...` — сервис `bot` в Docker начнёт опрашивать Telegram. Telegram отдаёт сообщения либо вебхуку, либо опросу, поэтому для локальной проверки удобнее отдельный бот, а не тот, что работает на проде. Кнопка «Открыть на доске» появляется только на https-адресе.
 
-## Деплой на Vercel
-
-Фронтенд и бэкенд — два проекта Vercel из одного репозитория (Root Directory `frontend` и `backend`). База — Postgres (Neon), кеш и лимиты — Redis (Upstash): обе подключаются через вкладку Storage, переменные подставляются сами. Ночная очистка — Vercel Cron, раз в сутки вызывает `/api/cron/cleanup` с `CRON_SECRET`.
-
-| Проект | Переменная | Значение |
-| --- | --- | --- |
-| backend | `LLM_PROVIDER` | `openai` |
-| backend | `OPENAI_API_KEY` | ключ OpenAI |
-| backend | `OPENAI_MODEL` | `gpt-5.6-luna` |
-| backend | `OPENAI_REASONING_EFFORT` | `none` |
-| backend | `CORS_ORIGINS` | адрес фронтенда, `https://….vercel.app` |
-| backend | `CORS_ORIGIN_REGEX` | превью-деплои, например `^https://leadsort-.*\.vercel\.app$` |
-| backend | `CRON_SECRET` | случайная строка |
-| backend | `TELEGRAM_BOT_TOKEN` | токен бота от @BotFather; вебхук поставится сам |
-| backend | `DATABASE_URL…`, `REDIS_URL` / `KV_URL` | подставляют Neon и Upstash |
-| frontend | `NEXT_PUBLIC_API_URL` | адрес бэкенда, `https://….vercel.app` |
-
 ---
 
 Демо-проект: студия «Пиксель», клиенты и контакты в примерах вымышлены.
